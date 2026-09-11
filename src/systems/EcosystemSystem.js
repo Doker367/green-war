@@ -1,6 +1,6 @@
 // =====================================================================
 // GREEN CODE — EcosystemSystem
-// Estado global del ecosistema, salud y progreso de misiones.
+// Estado global del ecosistema, salud, inventario y progreso.
 // =====================================================================
 
 export class EcosystemSystem {
@@ -10,11 +10,18 @@ export class EcosystemSystem {
   }
 
   reset() {
+    // Progreso de exploración
+    this.mapFound = false
+    this.seedsFound = false
+    this.seeds = 0
+
+    // Estado ambiental
     this.water = 0
     this.forest = 18
     this.fire = 100
     this.biodiversity = 12
     this.health = 20
+
     this.treesPlanted = 0
     this.fireTowers = 0
     this.waterFixed = false
@@ -37,8 +44,8 @@ export class EcosystemSystem {
       water: this.water, forest: this.forest, fire: this.fire,
       biodiversity: this.biodiversity, health: this.health,
       treesPlanted: this.treesPlanted, fireTowers: this.fireTowers,
-      waterFixed: this.waterFixed, fireFixed: this.fireFixed,
-      reforestFixed: this.reforestFixed
+      waterFixed: this.waterFixed, fireFixed: this.fireFixed, reforestFixed: this.reforestFixed,
+      mapFound: this.mapFound, seedsFound: this.seedsFound, seeds: this.seeds
     }
   }
 
@@ -48,9 +55,39 @@ export class EcosystemSystem {
   _recompute() {
     this.forest = Math.min(100, 18 + this.treesPlanted * 6 + (this.fireFixed ? 14 : 0))
     this.biodiversity = Math.min(100, 12 + this.treesPlanted * 5 + (this.waterFixed ? 14 : 0) + (this.fireFixed ? 12 : 0))
-    this.health = 20 + (this.waterFixed ? 25 : 0) + (this.fireFixed ? 25 : 0) + (this.reforestFixed ? 30 : 0)
+    this.health = 20
+      + (this.mapFound ? 5 : 0)
+      + (this.seedsFound ? 5 : 0)
+      + (this.waterFixed ? 20 : 0)
+      + (this.fireFixed ? 25 : 0)
+      + (this.reforestFixed ? 25 : 0)
   }
 
+  // ---- Exploración ----
+  findMap() {
+    if (this.mapFound) return
+    this.mapFound = true
+    this._recompute()
+    this._emitChange()
+    this.emit('event', { type: 'map', message: 'MAPA OBTENIDO' })
+  }
+
+  findSeeds() {
+    if (this.seedsFound) return
+    this.seedsFound = true
+    this.seeds = 10
+    this._recompute()
+    this._emitChange()
+    this.emit('event', { type: 'seeds', message: 'SEMILLAS OBTENIDAS' })
+  }
+
+  useSeed() {
+    if (this.seeds <= 0) return false
+    this.seeds--
+    return true
+  }
+
+  // ---- Restauración ----
   repairWater() {
     if (this.waterFixed) return
     this.waterFixed = true

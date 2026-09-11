@@ -23,7 +23,6 @@ import { MissionManager } from '../missions/MissionManager.js'
 import { HUD } from '../ui/HUD.js'
 import { Menu } from '../ui/Menu.js'
 import { GreenCodeUI } from '../ui/GreenCodeUI.js'
-import { rand, lerp } from './Utils.js'
 
 const State = { LOADING: 'loading', MENU: 'menu', PLAYING: 'playing', PAUSED: 'paused', ENDING: 'ending', END: 'end' }
 
@@ -166,7 +165,9 @@ export class Game {
   }
 
   _onEcosystemEvent(e) {
-    if (e.type === 'water') this.hud.subtitle('El agua vuelve a fluir por toda la comunidad.', 5200)
+    if (e.type === 'map') this.hud.subtitle('Un mapa marca un búnker de semillas. Sigue la baliza cian.', 5200)
+    if (e.type === 'seeds') this.hud.subtitle('Semillas nativas a salvo. Ahora hay que plantarlas.', 5200)
+    if (e.type === 'water') this.hud.subtitle('El río vuelve a estar limpio y la vida regresa.', 5200)
     if (e.type === 'fire') this.hud.subtitle('El humo se disipa. El bosque respira de nuevo.', 5200)
     if (e.type === 'reforest') this.hud.subtitle('Los árboles crecen. La vida regresa al valle.', 5200)
   }
@@ -314,7 +315,7 @@ export class Game {
       this._fade(false, 700)
       this.cameraController.requestLock()
       this.hud.setMission(this.missionManager.currentName)
-      this.hud.subtitle('Alex llega a la comunidad. Usa GREEN CODE para escanear los problemas.', 6000)
+      this.hud.subtitle('Alex llega al refugio. Entra y registra tu zona con GREEN CODE.', 6500)
     }, 520)
   }
 

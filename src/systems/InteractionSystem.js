@@ -3,6 +3,8 @@
 // Detecta el objeto interactuable más cercano y gestiona la tecla [E].
 // =====================================================================
 
+import * as THREE from 'three'
+
 export class InteractionSystem {
   constructor() {
     this.items = []
@@ -20,7 +22,7 @@ export class InteractionSystem {
 
   _getPos(item) {
     if (item.position.isVector3) return item.position
-    const v = new (item.position.constructor)()
+    const v = new THREE.Vector3()
     return item.position.getWorldPosition(v)
   }
 

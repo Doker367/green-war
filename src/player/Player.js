@@ -10,7 +10,7 @@ export class Player {
   constructor(camera, world) {
     this.camera = camera
     this.world = world
-    this.position = new THREE.Vector3(-10, 0, 30)
+    this.position = new THREE.Vector3(0, 0, 42)
     this.velocity = new THREE.Vector3()
     this.eye = 1.7
     this.radius = 0.45
@@ -25,7 +25,7 @@ export class Player {
   }
 
   reset() {
-    this.position.set(-10, terrainHeight(-10, 30), 30)
+    this.position.set(0, terrainHeight(0, 42), 42)
     this.velocity.set(0, 0, 0)
     this.onGround = true
   }

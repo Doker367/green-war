@@ -66,12 +66,6 @@ export class FireMission {
   async activate(gc, index) {
     const { ecosystem, vfx, audio, hud } = this.ctx
     gc.clearActions()
-    await gc.progress(`ACTIVANDO TORRE 0${index + 1} `, 1400)
-    await gc.runSteps([
-      { text: '✓ ENLACE ESTABLECIDO', cls: 'ok', delay: 340 },
-      { text: '✓ DESCARGA DE AGUA ACTIVA', cls: 'ok', delay: 340 },
-      { text: `✓ FUEGO REDUCIDO A ${Math.round(100 - (ecosystem.fireTowers + 1) * (100 / 3))}%`, cls: 'ok', delay: 420 }
-    ])
 
     this.activated[index] = true
     const tower = this.towers[index]
@@ -83,13 +77,17 @@ export class FireMission {
     audio.sfx('confirm')
     vfx.burst('water', new THREE.Vector3(tower.position.x, tower.position.y + 5, tower.position.z), 70)
 
+    await gc.progress(`ACTIVANDO TORRE 0${index + 1} `, 1400)
+    await gc.runSteps([
+      { text: '✓ ENLACE ESTABLECIDO', cls: 'ok', delay: 340 },
+      { text: '✓ DESCARGA DE AGUA ACTIVA', cls: 'ok', delay: 340 },
+      { text: `✓ FUEGO REDUCIDO A ${Math.round(ecosystem.fire)}%`, cls: 'ok', delay: 420 }
+    ])
+
     if (this.activated.every(Boolean)) {
       this.complete = true
       audio.setFireLevel(0)
       hud.toast('INCENDIO CONTROLADO', 'El humo se disipa')
-      setTimeout(() => {
-        // Fade del humo residual
-      }, 500)
     } else {
       hud.toast(`TORRE 0${index + 1} ACTIVA`, `Fuego al ${Math.round(ecosystem.fire)}%`)
     }

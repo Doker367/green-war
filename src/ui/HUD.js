@@ -26,6 +26,8 @@ export class HUD {
     this.toastEl = document.getElementById('toast')
     this.subtitleEl = document.getElementById('subtitle')
     this.objectives = {
+      map: document.querySelector('[data-obj="map"]'),
+      seeds: document.querySelector('[data-obj="seeds"]'),
       water: document.querySelector('[data-obj="water"]'),
       fire: document.querySelector('[data-obj="fire"]'),
       trees: document.querySelector('[data-obj="trees"]')
@@ -59,7 +61,9 @@ export class HUD {
     }
 
     // Objetivos
-    this._setObjective(this.objectives.water, s.waterFixed, '1/1')
+    this._setObjective(this.objectives.map, s.mapFound, '0/1')
+    this._setObjective(this.objectives.seeds, s.seedsFound, '0/1')
+    this._setObjective(this.objectives.water, s.waterFixed, '0/1')
     this._setObjective(this.objectives.fire, s.fireFixed, `${s.fireTowers}/3`)
     this._setObjective(this.objectives.trees, s.reforestFixed, `${s.treesPlanted}/10`)
   }

@@ -1,6 +1,6 @@
 // =====================================================================
 // GREEN CODE — Misión 3: Reforestación
-// Plantar 10 árboles con animación de crecimiento.
+// Planta las 10 semillas del búnker con animación de crecimiento.
 // =====================================================================
 
 export class ReforestationMission {
@@ -20,8 +20,8 @@ export class ReforestationMission {
       interaction.register({
         id: `spot-${i}`,
         position: spot.pos,
-        radius: 3.6,
-        label: 'PLANTAR ÁRBOL',
+        radius: 3.8,
+        label: 'PLANTAR SEMILLA',
         available: () => !spot.tree,
         onInteract: () => this.openTerminal(spot, i)
       })
@@ -31,7 +31,29 @@ export class ReforestationMission {
   openTerminal(spot, index) {
     const { gc, audio, ecosystem } = this.ctx
     audio.sfx('scan')
-    const remaining = 10 - ecosystem.treesPlanted
+
+    if (!ecosystem.seedsFound) {
+      gc.open({
+        scanTime: 800,
+        scanLabel: 'ANALIZANDO SUELO',
+        problem: {
+          title: 'ZONA DEGRADADA',
+          system: 'REFORESTACIÓN',
+          state: 'SIN SEMILLAS',
+          rows: [
+            { k: 'SEMILLAS', v: '0 DISPONIBLES', ok: false },
+            { k: 'REQUIERE', v: 'BÚNKER AGRÍCOLA' }
+          ]
+        },
+        hint: '[BLOQUEADO] CONSIGUE SEMILLAS EN EL BÚNKER',
+        onReady: (gcUI) => {
+          gcUI.logLine('> No tienes semillas. Encuentra el búnker.', 'warn')
+          gcUI.setActions([{ label: 'CERRAR', onClick: () => gcUI.close() }])
+        }
+      })
+      return
+    }
+
     gc.open({
       scanTime: 1000,
       scanLabel: 'ANALIZANDO SUELO',
@@ -40,9 +62,8 @@ export class ReforestationMission {
         system: 'REFORESTACIÓN',
         state: 'EROSIÓN ACTIVA',
         rows: [
-          { k: 'HUMEDAD DEL SUELO', v: '14%', ok: false },
-          { k: 'MATERIA ORGÁNICA', v: 'BAJA', ok: false },
-          { k: 'SEMILLAS DISPONIBLES', v: `${remaining}` }
+          { k: 'HUMEDAD DEL SUELO', v: ecosystem.waterFixed ? 'ÓPTIMA' : '14%', ok: ecosystem.waterFixed },
+          { k: 'SEMILLAS DISPONIBLES', v: `${ecosystem.seeds}`, ok: ecosystem.seeds > 0 }
         ]
       },
       hint: '[SISTEMA] PLANTAR',
@@ -53,21 +74,18 @@ export class ReforestationMission {
   buildActions(gc, spot, index) {
     gc.logLine('> Punto de plantado preparado.')
     gc.setActions([
-      { label: 'PLANTAR ÁRBOL', primary: true, onClick: () => this.plant(gc, spot) }
+      { label: 'PLANTAR SEMILLA', primary: true, onClick: () => this.plant(gc, spot) }
     ])
   }
 
   async plant(gc, spot) {
     const { ecosystem, audio, hud, world } = this.ctx
-    gc.clearActions()
-    await gc.progress('PLANTANDO ', 1200)
-    await gc.runSteps([
-      { text: '✓ SEMILLA COLOCADA', cls: 'ok', delay: 300 },
-      { text: '✓ RIEGO INICIAL APLICADO', cls: 'ok', delay: 300 },
-      { text: '✓ ÁRBOL EN CRECIMIENTO', cls: 'ok', delay: 420 }
-    ])
+    if (!ecosystem.useSeed()) {
+      gc.logLine('✗ Sin semillas disponibles', 'warn')
+      return
+    }
 
-    // Crear árbol y animar crecimiento
+    // Efecto inmediato (robusto aunque se cierre la terminal)
     const tree = this.ctx.assets.get('tree_alive')
     tree.scale.setScalar(0.02)
     tree.position.set(spot.pos.x, spot.pos.y, spot.pos.z)
@@ -76,7 +94,7 @@ export class ReforestationMission {
     spot.tree = tree
     spot.ring.visible = false
     spot.marker.visible = false
-    this.growing.push({ tree, t: 0, target: 1.1 + Math.random() * 0.6 })
+    this.growing.push({ tree, t: 0, target: 1.2 + Math.random() * 0.6 })
 
     ecosystem.plantTree()
     this.planted = ecosystem.treesPlanted
@@ -86,9 +104,18 @@ export class ReforestationMission {
     if (ecosystem.reforestFixed) {
       this.complete = true
       hud.toast('ZONA REFORESTADA', 'La vida regresa al valle')
+      world.showBeacon('reforest', false)
     } else {
-      hud.toast('ÁRBOL PLANTADO', `Restauración ${ecosystem.treesPlanted * 10}%`)
+      hud.toast('ÁRBOL PLANTADO', `Restauración ${ecosystem.treesPlanted * 10}% · Semillas: ${ecosystem.seeds}`)
     }
+
+    gc.clearActions()
+    await gc.progress('PLANTANDO ', 1200)
+    await gc.runSteps([
+      { text: '✓ SEMILLA COLOCADA', cls: 'ok', delay: 300 },
+      { text: '✓ RIEGO INICIAL APLICADO', cls: 'ok', delay: 300 },
+      { text: '✓ ÁRBOL EN CRECIMIENTO', cls: 'ok', delay: 420 }
+    ])
     gc.setHint('[COMPLETADO] PULSA ESC')
   }
 
@@ -104,9 +131,5 @@ export class ReforestationMission {
   }
 
   isComplete() { return this.complete }
-  reset() {
-    this.complete = false
-    this.planted = 0
-    this.growing = []
-  }
+  reset() { this.complete = false; this.planted = 0; this.growing = [] }
 }

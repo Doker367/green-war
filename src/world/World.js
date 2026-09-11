@@ -1,17 +1,18 @@
 // =====================================================================
 // GREEN CODE — World
-// Construye la comunidad mexicana ficticia: terreno, caminos, casas,
-// zona de agua, bosque incendiado y zona de reforestación.
+// Refugio (con cofres), río contaminado, zona incendiada, zona de
+// reforestación y búnker de semillas. Balizas para orientarse.
 // =====================================================================
 
 import * as THREE from 'three'
-import { terrainHeight, rand, makeRandom } from '../core/Utils.js'
+import { terrainHeight, rand, makeRandom, RIVER_Z, RIVER_HALF, RIVER_BED, lerp } from '../core/Utils.js'
 
 export const ZONES = {
-  community: new THREE.Vector3(0, 0, 0),
-  water: new THREE.Vector3(-62, 0, -30),
-  fire: new THREE.Vector3(58, 0, -44),
-  reforest: new THREE.Vector3(6, 0, 74)
+  refugio: new THREE.Vector3(0, 0, 22),
+  water: new THREE.Vector3(18, 0, -50),   // estación de filtración (orilla)
+  fire: new THREE.Vector3(82, 0, -14),
+  reforest: new THREE.Vector3(-34, 0, 84),
+  bunker: new THREE.Vector3(-90, 0, 30)
 }
 
 export class World {
@@ -23,17 +24,22 @@ export class World {
     this.groups = {}
     this.zones = {}
     this.aliveTrees = []
+    this.beacons = {}
     this._restoration = 0
+    this._waterClean = 0
 
     this._buildTerrain()
+    this._buildRiver()
     this._buildPaths()
-    this._buildCommunity()
-    this._buildWaterZone()
+    this._buildRefugio()
+    this._buildBunker()
+    this._buildWaterStation()
     this._buildFireZone()
     this._buildReforestZone()
     this._scatterNaturals()
     this._buildWildlife()
     this._buildBoundary()
+    this._buildBeacons()
   }
 
   getHeight(x, z) { return terrainHeight(x, z) + 0.02 }
@@ -42,7 +48,7 @@ export class World {
   //  TERRENO
   // =====================================================================
   _buildTerrain() {
-    const size = 300, seg = 140
+    const size = 300, seg = 130
     const geo = new THREE.PlaneGeometry(size, size, seg, seg)
     geo.rotateX(-Math.PI / 2)
     const pos = geo.attributes.position
@@ -58,7 +64,7 @@ export class World {
     this.terrainGeo = geo
     this.terrainPos = pos
 
-    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0, flatShading: false })
+    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0 })
     this.terrain = new THREE.Mesh(geo, mat)
     this.terrain.receiveShadow = true
     this.scene.add(this.terrain)
@@ -74,13 +80,9 @@ export class World {
     const patch = this._terrainPatch
     for (let i = 0; i < colors.count; i++) {
       const p = patch[i]
-      // Cada zona verde aparece en un umbral distinto -> transición orgánica
       const threshold = 0.28 + p * 0.6
       const local = THREE.MathUtils.smoothstep(t, threshold - 0.25, threshold + 0.1)
-      const dry = this._dry[i % 3]
-      const lush = this._lush[i % 3]
-      c.copy(dry).lerp(lush, local)
-      // Variación fina
+      c.copy(this._dry[i % 3]).lerp(this._lush[i % 3], local)
       const v = 0.92 + ((i * 9301 + 49297) % 233280) / 233280 * 0.16
       colors.setXYZ(i, c.r * v, c.g * v, c.b * v)
     }
@@ -94,20 +96,94 @@ export class World {
   }
 
   // =====================================================================
+  //  RÍO CONTAMINADO
+  // =====================================================================
+  _buildRiver() {
+    const geo = new THREE.PlaneGeometry(280, RIVER_HALF * 2, 40, 4)
+    geo.rotateX(-Math.PI / 2)
+    this.riverMat = new THREE.MeshStandardMaterial({
+      color: 0x3f4a22, roughness: 0.4, metalness: 0.1,
+      transparent: true, opacity: 0.96,
+      emissive: 0x1a2408, emissiveIntensity: 0.6
+    })
+    this.river = new THREE.Mesh(geo, this.riverMat)
+    this.river.position.set(0, RIVER_BED + 1.25, RIVER_Z)
+    this.river.receiveShadow = true
+    this.scene.add(this.river)
+    this._riverBaseY = RIVER_BED + 1.25
+
+    // Manchas de contaminación (desaparecen al filtrar)
+    this.sludge = []
+    const sludgeMat = new THREE.MeshStandardMaterial({
+      color: 0x2a3212, roughness: 0.6, transparent: true, opacity: 0.75, depthWrite: false
+    })
+    const rs = makeRandom(3301)
+    for (let i = 0; i < 14; i++) {
+      const blob = new THREE.Mesh(new THREE.CircleGeometry(rand(1.5, 3.6), 12), sludgeMat.clone())
+      blob.rotation.x = -Math.PI / 2
+      blob.position.set(-130 + rs() * 260, this._riverBaseY + 0.04, RIVER_Z + (rs() - 0.5) * RIVER_HALF)
+      this.scene.add(blob)
+      this.sludge.push(blob)
+    }
+
+    // Escombros / bidones abandonados (contaminación)
+    for (let i = 0; i < 7; i++) {
+      const x = rand(-120, 120)
+      const side = Math.random() < 0.5 ? -1 : 1
+      const z = RIVER_Z + side * (RIVER_HALF - 2)
+      const obj = this.assets.get(Math.random() < 0.5 ? 'barrel' : 'crate')
+      obj.position.set(x, this._riverBaseY - 0.2, z)
+      obj.rotation.y = rand(0, Math.PI)
+      this.scene.add(obj)
+    }
+
+    // Vegetación muerta / piedras en las orillas
+    const g = new THREE.Group()
+    const rng = makeRandom(5150)
+    for (let i = 0; i < 40; i++) {
+      const x = rand(-135, 135)
+      const side = rng() < 0.5 ? -1 : 1
+      const z = RIVER_Z + side * (RIVER_HALF + rng() * 6)
+      const y = terrainHeight(x, z)
+      const obj = this.assets.get(rng() < 0.4 ? 'rock' : rng() < 0.7 ? 'bush' : 'tree_dead')
+      obj.position.set(x, y, z)
+      obj.scale.setScalar(rand(0.6, 1.5))
+      g.add(obj)
+    }
+    this.scene.add(g)
+    this.groups.river = g
+    this.zones.river = { z: RIVER_Z, pos: new THREE.Vector3(0, this._riverBaseY, RIVER_Z) }
+  }
+
+  setWaterClean(t) {
+    this._waterClean = t
+    const murky = new THREE.Color(0x3f4a22)
+    const clean = new THREE.Color(0x2f86b5)
+    this.riverMat.color.copy(murky).lerp(clean, t)
+    this.riverMat.emissive.setHex(0x0a2a3a)
+    this.riverMat.emissiveIntensity = lerp(0.6, 0.6, t)
+    this.riverMat.opacity = lerp(0.96, 0.84, t)
+    if (this.sludge) {
+      for (const b of this.sludge) b.material.opacity = 0.75 * (1 - t)
+    }
+  }
+
+  // =====================================================================
   //  CAMINOS
   // =====================================================================
   _buildPaths() {
     const mat = new THREE.MeshStandardMaterial({ color: 0xb09363, roughness: 1 })
     const g = new THREE.Group()
     const routes = [
-      [ZONES.community, ZONES.water],
-      [ZONES.community, ZONES.fire],
-      [ZONES.community, ZONES.reforest]
+      [ZONES.refugio, ZONES.water],
+      [ZONES.refugio, ZONES.fire],
+      [ZONES.refugio, ZONES.reforest],
+      [ZONES.refugio, ZONES.bunker]
     ]
     for (const [a, b] of routes) {
       const dir = new THREE.Vector3().subVectors(b, a)
       const len = dir.length()
-      const plane = new THREE.Mesh(new THREE.PlaneGeometry(len, 3.4), mat)
+      const plane = new THREE.Mesh(new THREE.PlaneGeometry(len, 3.2), mat)
       plane.rotation.x = -Math.PI / 2
       plane.rotation.z = -Math.atan2(dir.z, dir.x)
       const mid = a.clone().add(b).multiplyScalar(0.5)
@@ -120,115 +196,223 @@ export class World {
   }
 
   // =====================================================================
-  //  COMUNIDAD
+  //  REFUGIO
   // =====================================================================
-  _buildCommunity() {
+  _buildRefugio() {
     const g = new THREE.Group()
-    const center = ZONES.community
-    const n = 7
-    for (let i = 0; i < n; i++) {
-      const a = (i / n) * Math.PI * 2 + 0.3
-      const r = 16 + this.rand() * 6
-      const x = center.x + Math.cos(a) * r
-      const z = center.z + Math.sin(a) * r
-      const house = this.assets.get('house')
-      house.position.set(x, terrainHeight(x, z), z)
-      house.rotation.y = -a + Math.PI / 2 + rand(-0.2, 0.2)
-      g.add(house)
-    }
-    // Plaza central: pozo seco / fuente
-    const wellBase = new THREE.Mesh(
-      new THREE.CylinderGeometry(2.4, 2.6, 1.0, 12),
-      new THREE.MeshStandardMaterial({ color: 0x8a7a64, roughness: 1, flatShading: true })
-    )
-    wellBase.position.set(center.x, terrainHeight(center.x, center.z) + 0.5, center.z)
-    wellBase.castShadow = wellBase.receiveShadow = true
-    g.add(wellBase)
+    const c = ZONES.refugio
+    const base = terrainHeight(c.x, c.z)
 
-    // Señal GREEN CODE y props
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x8a7a64, roughness: 0.95, flatShading: true })
+    const wallDark = new THREE.MeshStandardMaterial({ color: 0x6b5d4a, roughness: 1, flatShading: true })
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x9a8a70, roughness: 0.95 })
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0x5a4a38, roughness: 0.9, flatShading: true })
+    const doorMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.8, metalness: 0.2 })
+
+    const W = 11, D = 8, H = 3.2
+    // Piso
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(W, 0.3, D), floorMat)
+    floor.position.set(c.x, base - 0.05, c.z)
+    floor.receiveShadow = true
+    g.add(floor)
+
+    const wall = (x, z, w, d) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, H, d), wallMat)
+      m.position.set(c.x + x, base + H / 2, c.z + z)
+      m.castShadow = m.receiveShadow = true
+      g.add(m)
+    }
+    // Paredes laterales y trasera
+    wall(-W / 2, 0, 0.3, D)
+    wall(W / 2, 0, 0.3, D)
+    wall(0, -D / 2, W, 0.3)
+    // Frente con hueco de puerta
+    wall(-3.5, D / 2, 4, 0.3)
+    wall(3.5, D / 2, 4, 0.3)
+    const lintel = new THREE.Mesh(new THREE.BoxGeometry(3, 0.8, 0.3), wallMat)
+    lintel.position.set(c.x, base + H - 0.4, c.z + D / 2)
+    g.add(lintel)
+
+    // Techo
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(W + 1, 0.35, D + 1), roofMat)
+    roof.position.set(c.x, base + H + 0.15, c.z)
+    roof.castShadow = roof.receiveShadow = true
+    g.add(roof)
+
+    // Puerta entreabierta
+    const door = new THREE.Mesh(new THREE.BoxGeometry(2.6, 2.4, 0.15), doorMat)
+    door.position.set(c.x - 1.6, base + 1.2, c.z + D / 2 + 0.05)
+    door.rotation.y = -0.9
+    door.castShadow = true
+    g.add(door)
+
+    // ---- Interior ----
+    // Cama
+    const bed = new THREE.Group()
+    const bedBase = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.5, 2.2), wallDark)
+    const mattress = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.25, 2.1),
+      new THREE.MeshStandardMaterial({ color: 0x3f6b8a, roughness: 1 }))
+    mattress.position.y = 0.35
+    bed.add(bedBase, mattress)
+    bed.position.set(c.x - 4, base + 0.25, c.z - 2.4)
+    g.add(bed)
+
+    // Mesa
+    const table = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.15, 1), wallDark)
+    table.position.set(c.x + 3.6, base + 0.9, c.z - 2.6)
+    table.castShadow = true
+    g.add(table)
+    for (const [dx, dz] of [[-0.7, -0.35], [0.7, -0.35], [-0.7, 0.35], [0.7, 0.35]]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.9, 0.1), wallDark)
+      leg.position.set(c.x + 3.6 + dx, base + 0.45, c.z - 2.6 + dz)
+      g.add(leg)
+    }
+
+    // Lámpara interior (encendida al entrar)
+    const lampMat = new THREE.MeshStandardMaterial({ color: 0xfff2cc, emissive: 0xffcf6a, emissiveIntensity: 0.2 })
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 8), lampMat)
+    lamp.position.set(c.x, base + H - 0.5, c.z)
+    g.add(lamp)
+    const light = new THREE.PointLight(0xffcf8a, 0, 18, 2)
+    light.position.set(c.x, base + H - 0.6, c.z)
+    g.add(light)
+
+    // Radio / utilería
+    const radio = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 0.3),
+      new THREE.MeshStandardMaterial({ color: 0x2c3e50, roughness: 0.6, metalness: 0.3 }))
+    radio.position.set(c.x + 3.6, base + 1.1, c.z - 2.6)
+    g.add(radio)
+
+    // ---- Cofres ----
+    const chestDefs = [
+      { kind: 'wood', x: -3.0, z: -3.4, loot: 'suministros' },
+      { kind: 'metal', x: -1.2, z: -3.6, loot: 'herramientas' },
+      { kind: 'rusty', x: 0.7, z: -3.4, loot: 'mapa' }
+    ]
+    const chests = []
+    chestDefs.forEach((def) => {
+      const chest = this.assets.get('chest')
+      chest.position.set(c.x + def.x, base + 0.1, c.z + def.z)
+      chest.rotation.y = Math.PI
+      chest.userData.kind = def.kind
+      chest.userData.loot = def.loot
+      chest.userData.opened = false
+      g.add(chest)
+      chests.push(chest)
+    })
+
+    // Señal exterior
     const sign = this.assets.get('sign')
-    sign.position.set(center.x + 8, terrainHeight(center.x + 8, center.z + 6), center.z + 6)
-    sign.rotation.y = -0.6
+    sign.position.set(c.x + 6.5, base, c.z + 5)
+    sign.rotation.y = -0.5
     g.add(sign)
 
-    for (let i = 0; i < 3; i++) {
-      const b = this.assets.get('barrel')
-      b.position.set(center.x - 10 + i * 1.4, terrainHeight(center.x - 10 + i * 1.4, center.z + 8), center.z + 8)
-      g.add(b)
-      const c = this.assets.get('crate')
-      c.position.set(center.x + 11 + i * 1.2, terrainHeight(center.x + 11, center.z - 7), center.z - 7 + i)
-      g.add(c)
-    }
-    for (let i = 0; i < 5; i++) {
-      const p = this.assets.get('post')
-      const a = (i / 5) * Math.PI * 2
-      const x = center.x + Math.cos(a) * 22, z = center.z + Math.sin(a) * 22
-      p.position.set(x, terrainHeight(x, z), z)
-      g.add(p)
-    }
-    // Árboles vivos siempre presentes en la comunidad
-    for (let i = 0; i < 6; i++) {
-      const a = rand(0, Math.PI * 2)
-      const x = center.x + Math.cos(a) * rand(11, 20)
-      const z = center.z + Math.sin(a) * rand(11, 20)
-      const t = this.assets.get('tree_alive')
-      t.position.set(x, terrainHeight(x, z), z)
-      t.scale.setScalar(rand(1.3, 1.9))
-      g.add(t)
-    }
     this.scene.add(g)
-    this.groups.community = g
-    this.zones.community = { pos: center }
+    this.groups.refugio = g
+    this.zones.refugio = {
+      pos: c,
+      base,
+      size: { W, D, H },
+      inside: new THREE.Vector3(c.x, base, c.z),
+      chests,
+      lampMat,
+      light,
+      insideRadius: 4.8
+    }
   }
 
   // =====================================================================
-  //  ZONA DE AGUA
+  //  BÚNKER DE SEMILLAS
   // =====================================================================
-  _buildWaterZone() {
+  _buildBunker() {
+    const g = new THREE.Group()
+    const c = ZONES.bunker
+    const base = terrainHeight(c.x, c.z)
+    const concrete = new THREE.MeshStandardMaterial({ color: 0x8a8f88, roughness: 0.95, flatShading: true })
+    const dark = new THREE.MeshStandardMaterial({ color: 0x4a4f4a, roughness: 1, flatShading: true })
+    const metal = new THREE.MeshStandardMaterial({ color: 0x6b7078, roughness: 0.4, metalness: 0.7 })
+
+    const bunker = new THREE.Mesh(new THREE.BoxGeometry(9, 3.4, 7), concrete)
+    bunker.position.set(c.x, base + 1.0, c.z)
+    bunker.castShadow = bunker.receiveShadow = true
+    g.add(bunker)
+    // Entrada inclinada
+    const ramp = new THREE.Mesh(new THREE.BoxGeometry(4, 0.4, 5), dark)
+    ramp.position.set(c.x, base + 0.2, c.z + 5.5)
+    ramp.rotation.x = 0.25
+    g.add(ramp)
+    // Escotilla
+    const hatch = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, 0.3, 16), metal)
+    hatch.position.set(c.x, base + 2.75, c.z)
+    g.add(hatch)
+    // Antena
+    const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 4, 6), metal)
+    antenna.position.set(c.x + 3.2, base + 4.5, c.z - 2.2)
+    g.add(antenna)
+    const beaconLight = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8),
+      new THREE.MeshStandardMaterial({ color: 0x333333, emissive: 0x45e0d8, emissiveIntensity: 2 }))
+    beaconLight.position.set(c.x + 3.2, base + 6.5, c.z - 2.2)
+    g.add(beaconLight)
+
+    // Cajas alrededor
+    for (let i = 0; i < 4; i++) {
+      const cr = this.assets.get('crate')
+      cr.position.set(c.x - 5 + i * 0.9, base + terrainHeight(c.x - 5 + i * 0.9, c.z + 4) - base, c.z + 4)
+      g.add(cr)
+    }
+
+    this.scene.add(g)
+    this.groups.bunker = g
+    this.zones.bunker = { pos: c, base, hatch }
+  }
+
+  // =====================================================================
+  //  ESTACIÓN DE FILTRACIÓN (orilla del río)
+  // =====================================================================
+  _buildWaterStation() {
     const g = new THREE.Group()
     const c = ZONES.water
-    const base = terrainHeight(c.x, c.z)
+    c.y = terrainHeight(c.x, c.z)
+    const base = c.y
 
+    // Plataforma junto al río
+    const platform = new THREE.Mesh(new THREE.BoxGeometry(9, 0.4, 6),
+      new THREE.MeshStandardMaterial({ color: 0x7a6a52, roughness: 1, flatShading: true }))
+    platform.position.set(c.x, base + 0.2, c.z)
+    platform.receiveShadow = true
+    g.add(platform)
+
+    // Tanque de filtración
     const tank = this.assets.get('water_tank')
-    tank.position.set(c.x, base, c.z)
+    tank.position.set(c.x - 2.5, base + 0.4, c.z - 1)
+    tank.scale.setScalar(0.8)
     g.add(tank)
 
-    // Tubería rota: 3 segmentos, cada uno rotado al azar (puzzle)
-    const segments = []
-    const pipeMatDir = [0, 1, 2]
-    for (let i = 0; i < 3; i++) {
-      const seg = this.assets.get('pipe_segment')
-      const px = c.x + 6 + i * 2.6
-      seg.position.set(px, base + 0.6, c.z + 4)
-      seg.rotation.y = rand(0, Math.PI * 2)
-      seg.userData.name = `SEG-${String.fromCharCode(65 + i)}`
-      seg.userData.aligned = false
-      seg.userData.offset = Math.floor(rand(1, 4))
-      g.add(seg)
-      segments.push(seg)
-    }
-    // Poste con fuga (indicador)
-    const sign = this.assets.get('sign')
-    sign.position.set(c.x + 8, base, c.z + 7)
-    sign.rotation.y = -1.0
-    g.add(sign)
+    // Panel de control
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.8, 0.3),
+      new THREE.MeshStandardMaterial({ color: 0x2c3e50, roughness: 0.5, metalness: 0.4 }))
+    panel.position.set(c.x + 2.8, base + 1.1, c.z + 1)
+    panel.castShadow = true
+    g.add(panel)
+    const screenMat = new THREE.MeshStandardMaterial({ color: 0x0a1a14, emissive: 0x35e07a, emissiveIntensity: 0.8 })
+    const screen = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.9, 0.05), screenMat)
+    screen.position.set(c.x + 2.8, base + 1.5, c.z + 1.18)
+    g.add(screen)
 
-    // Charco de agua (aparece al reparar)
-    const pool = new THREE.Mesh(
-      new THREE.CircleGeometry(9, 32),
-      new THREE.MeshStandardMaterial({
-        color: 0x2f86b5, roughness: 0.15, metalness: 0.2,
-        transparent: true, opacity: 0,
-        emissive: 0x0a2a3a, emissiveIntensity: 0.4
-      })
-    )
-    pool.rotation.x = -Math.PI / 2
-    pool.position.set(c.x - 1, base + 0.08, c.z - 9)
-    g.add(pool)
+    // Tuberías de succión hacia el río
+    for (let i = 0; i < 4; i++) {
+      const pipe = this.assets.get('pipe_segment')
+      pipe.position.set(c.x - 3 + i * 2.2, base + 0.5, c.z - 4.5)
+      pipe.rotation.y = 0
+      g.add(pipe)
+    }
+    const barrel = this.assets.get('barrel')
+    barrel.position.set(c.x + 3.5, base + 0.55, c.z - 2)
+    g.add(barrel)
 
     this.scene.add(g)
     this.groups.water = g
-    this.zones.water = { pos: c, segments, tank, pool, base }
+    this.zones.water = { pos: c, base, tank, panel, screenMat }
   }
 
   // =====================================================================
@@ -238,8 +422,6 @@ export class World {
     const g = new THREE.Group()
     const c = ZONES.fire
     const rng = makeRandom(777)
-
-    // Árboles quemados
     for (let i = 0; i < 26; i++) {
       const a = rng() * Math.PI * 2
       const r = Math.sqrt(rng()) * 20
@@ -251,28 +433,25 @@ export class World {
       t.scale.setScalar(rand(0.9, 1.7))
       g.add(t)
     }
-    // Rocas
     for (let i = 0; i < 5; i++) {
       const x = c.x + rand(-16, 16), z = c.z + rand(-16, 16)
       const rock = this.assets.get('rock')
       rock.position.set(x, terrainHeight(x, z), z)
       g.add(rock)
     }
-    // 3 torres de control
     const towers = []
     const towerPositions = [
       new THREE.Vector3(c.x - 15, 0, c.z - 13),
       new THREE.Vector3(c.x + 15, 0, c.z - 13),
       new THREE.Vector3(c.x, 0, c.z + 16)
     ]
-    towerPositions.forEach((p, i) => {
+    towerPositions.forEach((p) => {
       const tower = this.assets.get('tower')
       p.y = terrainHeight(p.x, p.z)
       tower.position.copy(p)
       g.add(tower)
       towers.push(tower)
     })
-    // Base de operaciones
     const crate = this.assets.get('crate')
     crate.position.set(c.x + 6, terrainHeight(c.x + 6, c.z + 8), c.z + 8)
     g.add(crate)
@@ -290,8 +469,6 @@ export class World {
     const g = new THREE.Group()
     const c = ZONES.reforest
     const rng = makeRandom(4242)
-
-    // Puntos de plantado (10)
     const spots = []
     const layout = []
     for (let row = 0; row < 3; row++) {
@@ -300,7 +477,7 @@ export class World {
         layout.push({ x: c.x - 9 + col * 6, z: c.z - 6 + row * 6 })
       }
     }
-    layout.forEach((p, i) => {
+    layout.forEach((p) => {
       const y = terrainHeight(p.x, p.z)
       const ring = new THREE.Mesh(
         new THREE.RingGeometry(0.9, 1.25, 24),
@@ -309,16 +486,12 @@ export class World {
       ring.rotation.x = -Math.PI / 2
       ring.position.set(p.x, y + 0.06, p.z)
       g.add(ring)
-      const marker = new THREE.Mesh(
-        new THREE.ConeGeometry(0.16, 0.6, 6),
-        new THREE.MeshBasicMaterial({ color: 0x35e07a })
-      )
+      const marker = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.6, 6),
+        new THREE.MeshBasicMaterial({ color: 0x35e07a }))
       marker.position.set(p.x, y + 0.4, p.z)
       g.add(marker)
       spots.push({ pos: new THREE.Vector3(p.x, y, p.z), ring, marker, tree: null })
     })
-
-    // Algunos árboles muertos en la zona
     for (let i = 0; i < 8; i++) {
       const a = rng() * Math.PI * 2
       const r = 14 + rng() * 10
@@ -329,21 +502,19 @@ export class World {
       t.scale.setScalar(rand(1.1, 1.8))
       g.add(t)
     }
-    // Cactus (toque México)
     for (let i = 0; i < 4; i++) {
       const x = c.x + rand(-18, 18), z = c.z + rand(-16, 16)
       const cact = this.assets.get('cactus')
       cact.position.set(x, terrainHeight(x, z), z)
       g.add(cact)
     }
-
     this.scene.add(g)
     this.groups.reforest = g
     this.zones.reforest = { pos: c, spots }
   }
 
   // =====================================================================
-  //  NATURALEZA DISPERSA (árboles, arbustos, rocas, hierba)
+  //  NATURALEZA DISPERSA
   // =====================================================================
   _scatterNaturals() {
     const rng = makeRandom(99)
@@ -351,17 +522,19 @@ export class World {
     const dead = new THREE.Group()
     this.scene.add(g, dead)
 
+    const avoid = (x, z) =>
+      Math.hypot(x - ZONES.refugio.x, z - ZONES.refugio.z) < 16 ||
+      Math.hypot(x - ZONES.reforest.x, z - ZONES.reforest.z) < 20 ||
+      Math.abs(z - RIVER_Z) < RIVER_HALF + 6
+
     for (let i = 0; i < 46; i++) {
       const x = rand(-130, 130), z = rand(-130, 130)
-      if (Math.hypot(x, z) < 26) continue
-      if (Math.hypot(x - ZONES.reforest.x, z - ZONES.reforest.z) < 20) continue
+      if (avoid(x, z)) continue
       const y = terrainHeight(x, z)
       const t = this.assets.get(rng() < 0.45 ? 'tree_dead' : 'tree_alive')
       t.position.set(x, y, z)
       t.scale.setScalar(rand(1.0, 2.0))
       t.rotation.y = rng() * Math.PI * 2
-      if (t.userData) {}
-      // Los vivos "despiertan" con la restauración
       if (rng() < 0.5) {
         const threshold = 0.25 + rng() * 0.6
         t.visible = false
@@ -373,6 +546,7 @@ export class World {
     }
     for (let i = 0; i < 40; i++) {
       const x = rand(-135, 135), z = rand(-135, 135)
+      if (avoid(x, z)) continue
       const y = terrainHeight(x, z)
       const b = this.assets.get(rng() < 0.5 ? 'bush' : 'rock')
       b.position.set(x, y, z)
@@ -380,17 +554,16 @@ export class World {
       dead.add(b)
     }
 
-    // Hierba (InstancedMesh) que aparece con la restauración
     const bladeGeo = new THREE.ConeGeometry(0.09, 0.7, 4)
     const bladeMat = new THREE.MeshStandardMaterial({ color: 0x4f9a3f, roughness: 1, flatShading: true, transparent: true, opacity: 0 })
     const count = 3000
     const grass = new THREE.InstancedMesh(bladeGeo, bladeMat, count)
-    grass.instanceMatrix.setUsage(THREE.StaticDrawUsage)
     const dummy = new THREE.Object3D()
     let placed = 0
     for (let i = 0; i < count * 2 && placed < count; i++) {
       const x = rand(-140, 140), z = rand(-140, 140)
       if (Math.hypot(x - ZONES.fire.x, z - ZONES.fire.z) < 24) continue
+      if (avoid(x, z)) continue
       const y = terrainHeight(x, z)
       dummy.position.set(x, y + 0.3, z)
       dummy.scale.setScalar(rand(0.6, 1.6))
@@ -403,7 +576,6 @@ export class World {
     this.grass = grass
     this.grassMat = bladeMat
     this.scene.add(grass)
-
     this.aliveGroup = g
   }
 
@@ -444,7 +616,6 @@ export class World {
   }
 
   _buildBoundary() {
-    // Montañas lejanas de bajo poligonaje para cerrar el horizonte
     const geo = new THREE.ConeGeometry(1, 1, 5)
     const mat = new THREE.MeshStandardMaterial({ color: 0x6b6250, roughness: 1, flatShading: true })
     const inst = new THREE.InstancedMesh(geo, mat, 26)
@@ -463,12 +634,40 @@ export class World {
     this.scene.add(inst)
   }
 
+  // =====================================================================
+  //  BALIZAS DE OBJETIVO
+  // =====================================================================
+  _buildBeacons() {
+    const defs = [
+      { name: 'refugio', pos: ZONES.refugio, color: 0x35e07a, on: true },
+      { name: 'water', pos: ZONES.water, color: 0x45a0e0, on: true },
+      { name: 'fire', pos: ZONES.fire, color: 0xff7a1a, on: true },
+      { name: 'reforest', pos: ZONES.reforest, color: 0x9fe65a, on: true },
+      { name: 'bunker', pos: ZONES.bunker, color: 0x45e0d8, on: false }
+    ]
+    for (const d of defs) {
+      const mat = new THREE.MeshBasicMaterial({
+        color: d.color, transparent: true, opacity: 0.18,
+        blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+      })
+      const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 82, 12, 1, true), mat)
+      const y = terrainHeight(d.pos.x, d.pos.z)
+      beam.position.set(d.pos.x, y + 49, d.pos.z)
+      beam.visible = d.on
+      this.scene.add(beam)
+      this.beacons[d.name] = beam
+    }
+  }
+
+  showBeacon(name, on = true) {
+    if (this.beacons[name]) this.beacons[name].visible = on
+  }
+
   update(dt, restoration) {
     this.setRestoration(restoration)
     if (this.aliveTrees) {
       for (const t of this.aliveTrees) {
         t.obj.visible = restoration > t.threshold
-        if (t.obj.visible && t.obj.scale.x < 0.01) t.obj.scale.setScalar(1)
       }
     }
     if (this.grassMat) {

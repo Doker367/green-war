@@ -1,35 +1,33 @@
 // =====================================================================
-// GREEN CODE — Misión 1: Sistema de Agua
-// Detecta la fuga y resuelve un puzzle de 3 segmentos de tubería.
+// GREEN CODE — Misión de Agua: Río contaminado
+// Inspecciona el río y activa las etapas del sistema de filtración
+// en el orden correcto para devolver el agua limpia.
 // =====================================================================
 
 import * as THREE from 'three'
 
+const STAGES = [
+  { id: 'sedimentos', label: 'FILTRO DE SEDIMENTOS' },
+  { id: 'carbon', label: 'CARBÓN ACTIVADO' },
+  { id: 'uv', label: 'DESINFECCIÓN UV' }
+]
+
 export class WaterMission {
   constructor(ctx) {
     this.ctx = ctx
-    this.name = 'REPARAR SISTEMA DE AGUA'
+    this.name = 'FILTRAR EL AGUA DEL RÍO'
     this.complete = false
-    this.segments = []
-    this._flowTimer = 0
+    this.progress = 0
   }
 
   init() {
     const { world, interaction } = this.ctx
-    const zone = world.zones.water
-    this.zone = zone
-    this.segments = zone.segments
-    this.segments.forEach((s) => {
-      s.userData.offset = 1 + Math.floor(Math.random() * 3)
-      s.rotation.y = s.userData.offset * Math.PI * 0.5
-      s.userData.aligned = false
-    })
-
-    this.item = interaction.register({
-      id: 'water-leak',
-      position: zone.tank.position,
-      radius: 13,
-      label: 'ANALIZAR FUGA DE AGUA',
+    this.zone = world.zones.water
+    interaction.register({
+      id: 'river-filter',
+      position: this.zone.panel,
+      radius: 12,
+      label: 'INSPECCIONAR RÍO / FILTRO',
       available: () => !this.complete,
       onInteract: () => this.openTerminal()
     })
@@ -40,102 +38,104 @@ export class WaterMission {
     audio.sfx('scan')
     gc.open({
       scanTime: 1300,
-      scanLabel: 'ESCANEANDO RED HIDRÁULICA',
+      scanLabel: 'ANALIZANDO CALIDAD DEL AGUA',
       problem: {
-        title: 'FUGA DE AGUA DETECTADA',
+        title: 'RÍO CONTAMINADO',
         system: 'SISTEMA DE AGUA',
         state: 'CRÍTICO',
         loss: '67%',
-        rows: [{ k: 'PRESIÓN', v: 'BAJA', ok: false }, { k: 'SEGMENTOS', v: '3 DESCONECTADOS', ok: false }]
+        rows: [
+          { k: 'TURBIDEZ', v: 'ALTA', ok: false },
+          { k: 'METALES PESADOS', v: 'DETECTADOS', ok: false },
+          { k: 'pH', v: '8.9 (ANÓMALO)', ok: false }
+        ]
       },
-      hint: '[PUZZLE] CONECTA LAS TUBERÍAS',
+      hint: '[SISTEMA] ACTIVA LOS FILTROS EN ORDEN',
       onReady: (gcUI) => this.buildPuzzle(gcUI)
     })
   }
 
   buildPuzzle(gc) {
-    gc.logLine('> Objetivo: alinear los 3 segmentos hasta 0°.')
-    gc.logLine('> Pulsa cada segmento para rotarlo 90°.')
+    const { audio } = this.ctx
+    this.progress = 0
+    const orderIds = STAGES.map((s) => s.id)
+    const shuffled = [...STAGES].sort(() => Math.random() - 0.5)
+
+    gc.logLine('> Secuencia correcta: SEDIMENTOS → CARBÓN → UV.')
+    gc.logLine('> Activa cada etapa en ese orden.')
+
     const render = () => {
-      const rows = this.segments.map((s, i) => {
-        const deg = s.userData.offset * 90
-        const aligned = s.userData.offset === 0
-        return `<div class="seg-row ${aligned ? 'aligned' : ''}">
-          <span>SEG-${String.fromCharCode(65 + i)}</span>
-          <span style="color:${aligned ? '#35e07a' : '#ffb03a'}">${aligned ? '✓ ALINEADO' : deg + '°'}</span>
-          <button data-seg="${i}">ROTAR ⟳</button>
-        </div>`
-      }).join('')
-      gc.actions.innerHTML = `<div class="puzzle">${rows}</div>`
-      gc.actions.querySelectorAll('button[data-seg]').forEach((btn) => {
-        btn.onclick = () => this.rotate(parseInt(btn.dataset.seg, 10), gc)
+      gc.actions.innerHTML = `<div class="puzzle">
+        ${STAGES.map((s, i) => {
+          const done = i < this.progress
+          return `<div class="seg-row ${done ? 'aligned' : ''}">
+            <span>${i + 1}. ${s.label}</span>
+            <span style="color:${done ? '#35e07a' : '#ffb03a'}">${done ? '✓' : 'PENDIENTE'}</span>
+          </div>`
+        }).join('')}
+        ${shuffled.map((s) => `<button data-f="${s.id}">ACTIVAR ${s.label}</button>`).join('')}
+      </div>`
+      gc.actions.querySelectorAll('button[data-f]').forEach((btn) => {
+        btn.onclick = () => this.activate(btn.dataset.f, gc)
       })
     }
-    this._renderPuzzle = render
+    this._render = render
     render()
+    this._orderIds = orderIds
+    void audio
   }
 
-  rotate(index, gc) {
+  activate(id, gc) {
     const { audio } = this.ctx
-    const seg = this.segments[index]
-    seg.userData.offset = (seg.userData.offset + 3) % 4 // -1 (mod 4)
-    seg.rotation.y = seg.userData.offset * Math.PI * 0.5
-    audio.sfx('interact')
-    this._renderPuzzle()
-
-    if (this.segments.every((s) => s.userData.offset === 0)) {
-      this.solve(gc)
+    if (id === this._orderIds[this.progress]) {
+      this.progress++
+      audio.sfx('interact')
+      this._render()
+      if (this.progress >= STAGES.length) this.solve(gc)
+    } else {
+      this.progress = 0
+      audio.sfx('error')
+      gc.logLine('✗ ORDEN INCORRECTO — reiniciando filtros', 'warn')
+      this._render()
     }
   }
 
   async solve(gc) {
     this.complete = true
-    gc.clearActions()
-    await gc.progress('ANALIZANDO FLUJO ', 1500)
-    await gc.runSteps([
-      { text: '✓ FUGA LOCALIZADA', cls: 'ok', delay: 380 },
-      { text: '✓ SEGMENTOS CONECTADOS', cls: 'ok', delay: 380 },
-      { text: '✓ SISTEMA REPARADO', cls: 'ok', delay: 380 },
-      { text: '✓ AGUA RESTAURADA', cls: 'ok', delay: 480 }
-    ])
     this.applyEffect()
+    gc.clearActions()
+    await gc.progress('FILTRANDO AGUA ', 1800)
+    await gc.runSteps([
+      { text: '✓ SEDIMENTOS RETIRADOS', cls: 'ok', delay: 360 },
+      { text: '✓ CONTAMINANTES NEUTRALIZADOS', cls: 'ok', delay: 360 },
+      { text: '✓ AGUA POTABLE RESTAURADA', cls: 'ok', delay: 480 }
+    ])
     gc.setHint('[COMPLETADO] PULSA ESC')
   }
 
   applyEffect() {
-    const { ecosystem, vfx, audio, hud } = this.ctx
+    const { ecosystem, vfx, audio, hud, world } = this.ctx
     ecosystem.repairWater()
+    world.setWaterClean(1)
     audio.sfx('confirm')
     audio.setWaterLevel(1)
-    // Charco visible
-    this.zone.pool.material.opacity = 0.78
-    this.zone.pool.material.transparent = true
-    this.zone.pool.position.y = this.zone.base + 0.1
-    // Tubería / tanque con brillo de agua
-    this.segments.forEach((s) => {
-      s.traverse((o) => {
-        if (o.isMesh && o.material && o.material.color) {
-          o.material.emissive = new THREE.Color(0x0a3a55)
-          o.material.emissiveIntensity = 0.6
-        }
-      })
-    })
-    hud.toast('AGUA RESTAURADA', 'El sistema vuelve a circular')
-    // Ráfaga inicial
-    vfx.burst('water', new THREE.Vector3(this.zone.pos.x, this.zone.base + 1, this.zone.pos.z + 4), 60)
+    if (this.zone.screenMat) this.zone.screenMat.emissive.setHex(0x45e0ff)
+    hud.toast('AGUA FILTRADA', 'El río vuelve a estar limpio')
   }
 
   update(dt) {
     if (!this.complete) return
-    // Chorro continuo de agua en la tubería reparada
-    this._flowTimer -= dt
-    if (this._flowTimer <= 0) {
-      this._flowTimer = 0.6
-      const { vfx } = this.ctx
-      vfx.burst('water', new THREE.Vector3(this.zone.pos.x + 10, this.zone.base + 1.4, this.zone.pos.z + 4), 10)
+    this._t = (this._t || 0) - dt
+    if (this._t <= 0) {
+      this._t = 1.4
+      const { vfx, world } = this.ctx
+      // Pequeños destellos de agua limpia a lo largo del río
+      const z = world.zones.river.z
+      const x = (Math.random() - 0.5) * 180
+      vfx.burst('water', new THREE.Vector3(x, world._riverBaseY + 0.5, z), 6)
     }
   }
 
   isComplete() { return this.complete }
-  reset() { this.complete = false; this.init() }
+  reset() { this.complete = false; this.progress = 0 }
 }

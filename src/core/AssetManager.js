@@ -15,7 +15,7 @@ import { rand, hash2 } from './Utils.js'
 const MODELS = [
   'house', 'tree_alive', 'tree_dead', 'tree_burnt', 'water_tank',
   'pipe_segment', 'tower', 'rock', 'cactus', 'bush', 'barrel',
-  'crate', 'sign', 'post', 'deer', 'bird', 'person'
+  'crate', 'sign', 'post', 'deer', 'bird', 'person', 'chest'
 ]
 
 export class AssetManager {
@@ -102,7 +102,8 @@ export class AssetManager {
       post: () => this.makePost(),
       deer: () => this.makeDeer(),
       bird: () => this.makeBird(),
-      person: () => this.makePerson()
+      person: () => this.makePerson(),
+      chest: () => this.makeChest('wood')
     }
   }
 
@@ -288,6 +289,39 @@ export class AssetManager {
     const mat = this.mat('post', 0x7a5a3a, { roughness: 1 })
     g.add(this._mesh(this._geos.cyl, mat, 0, 1.4, 0, 0.12, 2.8, 0.12))
     g.add(this._mesh(this._geos.box, mat, 0, 2.7, 0, 0.8, 0.1, 0.1))
+    return g
+  }
+
+  makeChest(type = 'wood') {
+    const g = new THREE.Group()
+    const palette = {
+      wood: { body: 0x8a5a2b, trim: 0x5a3a18, metal: 0x9a7a3a },
+      metal: { body: 0x6b7a86, trim: 0x3a4650, metal: 0xb8c4cc },
+      rusty: { body: 0x7a4a2a, trim: 0x3a2416, metal: 0x8a5a3a }
+    }[type] || { body: 0x8a5a2b, trim: 0x5a3a18, metal: 0x9a7a3a }
+    const bodyMat = this.mat('chestBody' + type, palette.body, { roughness: 0.85, metalness: type === 'metal' ? 0.5 : 0.1 })
+    const trimMat = this.mat('chestTrim' + type, palette.trim, { roughness: 0.7, metalness: type === 'metal' ? 0.6 : 0.2 })
+    const lockMat = this.mat('chestLock' + type, palette.metal, { roughness: 0.35, metalness: 0.8 })
+
+    const w = 1.2, d = 0.8, h = 0.75
+    g.add(this._mesh(this._geos.box, bodyMat, 0, h / 2, 0, w, h, d))
+    // refuerzos verticales
+    g.add(this._mesh(this._geos.box, trimMat, -w / 2 + 0.06, h / 2, 0, 0.1, h, d + 0.02))
+    g.add(this._mesh(this._geos.box, trimMat, w / 2 - 0.06, h / 2, 0, 0.1, h, d + 0.02))
+
+    // Tapa con bisagra trasera
+    const lid = new THREE.Group()
+    lid.position.set(0, h, -d / 2)
+    const lidBody = this._mesh(this._geos.box, bodyMat, 0, 0.12, d / 2, w, 0.22, d)
+    const lidTrim = this._mesh(this._geos.box, trimMat, 0, 0.12, d / 2, w + 0.02, 0.24, 0.08)
+    lid.add(lidBody, lidTrim)
+    g.add(lid)
+
+    // Cerradura
+    g.add(this._mesh(this._geos.box, lockMat, 0, h * 0.62, d / 2 + 0.02, 0.18, 0.24, 0.08))
+    g.userData.lid = lid
+    g.userData.open = false
+    g.userData.kind = type
     return g
   }
 
