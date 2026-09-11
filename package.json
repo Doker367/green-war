@@ -1,0 +1,18 @@
+{
+  "name": "green-code",
+  "private": true,
+  "version": "1.0.0",
+  "description": "GREEN CODE - Restaura el Futuro. Videojuego 3D de impacto ambiental (Three.js + Vite).",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "^0.160.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  }
+}

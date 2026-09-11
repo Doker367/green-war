@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GREEN CODE — Restaura el Futuro</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%8C%B1%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script type="module" crossorigin src="./assets/index-BAQxHUHt.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-DDfz4yNk.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <!-- ================= FADE / LETTERBOX ================= -->
+  <div id="fade" class="fade"></div>
+  <div id="vignette" class="vignette"></div>
+
+  <!-- ================= LOADING ================= -->
+  <section id="loading" class="screen active">
+    <div class="scanlines"></div>
+    <div class="loading-box">
+      <div class="logo-mark">◍</div>
+      <h1 class="brand">GREEN<span>CODE</span></h1>
+      <p class="brand-sub">RESTAURA EL FUTURO</p>
+      <p class="loading-label">INICIALIZANDO SISTEMA ECOLÓGICO…</p>
+      <div class="progress"><div id="load-bar" class="progress-fill"></div></div>
+      <p id="load-pct" class="loading-pct">0%</p>
+      <ul id="load-steps" class="load-steps">
+        <li data-step="0">• Terreno</li>
+        <li data-step="1">• Vegetación</li>
+        <li data-step="2">• Agua</li>
+        <li data-step="3">• Efectos</li>
+        <li data-step="4">• Animales</li>
+        <li data-step="5">• Ambiente</li>
+      </ul>
+      <button id="btn-start" class="btn primary hidden">INICIAR MISIÓN</button>
+    </div>
+  </section>
+
+  <!-- ================= MENU ================= -->
+  <section id="menu" class="screen">
+    <div class="scanlines"></div>
+    <div class="menu-content">
+      <div class="menu-title">
+        <h1 class="brand big">GREEN<span>CODE</span></h1>
+        <p class="brand-sub big">RESTAURA EL FUTURO</p>
+      </div>
+      <nav class="menu-buttons">
+        <button id="btn-play" class="btn primary">JUGAR</button>
+        <button id="btn-howto" class="btn">CÓMO JUGAR</button>
+        <button id="btn-credits" class="btn">CRÉDITOS</button>
+        <button id="btn-settings" class="btn">CONFIGURACIÓN</button>
+      </nav>
+      <p class="menu-foot">PROTOTIPO MVP · Three.js + Vite · Impacto social y ambiental</p>
+    </div>
+  </section>
+
+  <!-- ================= HOW TO ================= -->
+  <section id="howto" class="screen panel-screen">
+    <div class="scanlines"></div>
+    <div class="panel">
+      <h2 class="panel-title">CÓMO JUGAR</h2>
+      <div class="panel-grid">
+        <div class="key"><span class="kbd">W A S D</span><p>Moverse</p></div>
+        <div class="key"><span class="kbd">MOUSE</span><p>Mirar</p></div>
+        <div class="key"><span class="kbd">SHIFT</span><p>Correr</p></div>
+        <div class="key"><span class="kbd">SPACE</span><p>Saltar</p></div>
+        <div class="key"><span class="kbd">E</span><p>Interactuar / GREEN CODE</p></div>
+        <div class="key"><span class="kbd">ESC</span><p>Pausa</p></div>
+      </div>
+      <p class="panel-text">Usa la herramienta <b>GREEN CODE</b> para escanear problemas ambientales y ejecutar soluciones. Completa los 3 objetivos para restaurar la comunidad.</p>
+      <button class="btn back" data-back>VOLVER</button>
+    </div>
+  </section>
+
+  <!-- ================= CREDITS ================= -->
+  <section id="credits" class="screen panel-screen">
+    <div class="scanlines"></div>
+    <div class="panel">
+      <h2 class="panel-title">CRÉDITOS</h2>
+      <p class="panel-text">Un videojuego sobre el uso de la tecnología para comprender y restaurar el medio ambiente.</p>
+      <ul class="credits-list">
+        <li><b>Diseño y desarrollo</b><span>Equipo GREEN CODE</span></li>
+        <li><b>Motor</b><span>Three.js · WebGL</span></li>
+        <li><b>Build</b><span>Vite</span></li>
+        <li><b>Audio</b><span>Web Audio API (síntesis procedural)</span></li>
+        <li><b>Assets</b><span>Geometría procedural + soporte GLB externo (ver ASSETS.md)</span></li>
+        <li><b>Inspiración</b><span>ODS 6, 13 y 15 — Agua, Clima y Vida Terrestre</span></li>
+      </ul>
+      <button class="btn back" data-back>VOLVER</button>
+    </div>
+  </section>
+
+  <!-- ================= SETTINGS ================= -->
+  <section id="settings" class="screen panel-screen">
+    <div class="scanlines"></div>
+    <div class="panel">
+      <h2 class="panel-title">CONFIGURACIÓN</h2>
+      <div class="setting"><label>Calidad gráfica</label>
+        <div class="seg" id="set-quality">
+          <button data-q="low">BAJA</button><button data-q="med" class="on">MEDIA</button><button data-q="high">ALTA</button>
+        </div>
+      </div>
+      <div class="setting"><label>Volumen general <span id="vol-val">70%</span></label>
+        <input type="range" id="set-vol" min="0" max="100" value="70" />
+      </div>
+      <div class="setting"><label>Bloom / Postprocesado</label>
+        <div class="seg" id="set-bloom"><button data-b="on" class="on">SÍ</button><button data-b="off">NO</button></div>
+      </div>
+      <div class="setting"><label>Invertir eje Y</label>
+        <div class="seg" id="set-invert"><button data-i="off" class="on">NO</button><button data-i="on">SÍ</button></div>
+      </div>
+      <button id="btn-reset-save" class="btn danger">BORRAR PROGRESO</button>
+      <button class="btn back" data-back>VOLVER</button>
+    </div>
+  </section>
+
+  <!-- ================= HUD ================= -->
+  <section id="hud" class="overlay">
+    <div class="hud-top">
+      <div class="hud-brand">GREEN<span>CODE</span></div>
+      <div class="hud-mission">
+        <span class="hud-label">MISIÓN ACTUAL</span>
+        <span id="hud-mission-name">Iniciando…</span>
+      </div>
+    </div>
+
+    <div class="hud-right">
+      <div class="eco-card">
+        <div class="eco-title">ESTADO DEL ECOSISTEMA</div>
+        <div class="eco-row"><span>AGUA</span><div class="bar"><i id="bar-water"></i></div><b id="val-water">0%</b></div>
+        <div class="eco-row"><span>BOSQUE</span><div class="bar"><i id="bar-forest"></i></div><b id="val-forest">18%</b></div>
+        <div class="eco-row"><span>FUEGO</span><div class="bar fire"><i id="bar-fire"></i></div><b id="val-fire">100%</b></div>
+        <div class="eco-row"><span>BIODIV.</span><div class="bar"><i id="bar-bio"></i></div><b id="val-bio">12%</b></div>
+        <div class="eco-health">
+          <span>SALUD DEL ECOSISTEMA</span>
+          <div class="health-ring"><b id="val-health">20%</b></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hud-objectives">
+      <div class="hud-label">OBJETIVOS</div>
+      <ul id="objective-list">
+        <li data-obj="water"><i></i>Reparar sistema de agua <em>0/1</em></li>
+        <li data-obj="fire"><i></i>Controlar el incendio <em>0/3</em></li>
+        <li data-obj="trees"><i></i>Plantar 10 árboles <em>0/10</em></li>
+      </ul>
+    </div>
+
+    <div id="crosshair" class="crosshair"></div>
+    <div id="prompt" class="prompt"></div>
+
+    <div id="toast" class="toast"></div>
+    <div id="subtitle" class="subtitle"></div>
+  </section>
+
+  <!-- ================= GREEN CODE DEVICE ================= -->
+  <section id="greencode" class="screen device">
+    <div class="device-frame">
+      <header class="device-head">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <h3>&gt; GREEN_CODE — TERMINAL DE CAMPO</h3>
+        <button id="gc-close" class="gc-close">ESC</button>
+      </header>
+      <div class="device-body">
+        <div class="gc-left">
+          <div id="gc-scan" class="gc-scan">ESCANEANDO ENTORNO<span class="dots">...</span></div>
+          <div id="gc-problem" class="gc-problem hidden"></div>
+          <div id="gc-stats" class="gc-stats"></div>
+        </div>
+        <div class="gc-right">
+          <div id="gc-solution" class="gc-solution hidden"></div>
+          <div id="gc-actions" class="gc-actions"></div>
+          <div id="gc-log" class="gc-log"></div>
+        </div>
+      </div>
+      <footer class="device-foot">
+        <span id="gc-hint">[E] ANALIZAR</span>
+        <span id="gc-brand">◍ GREEN CODE v1.0</span>
+      </footer>
+    </div>
+  </section>
+
+  <!-- ================= PAUSE ================= -->
+  <section id="pause" class="screen overlay-dark">
+    <div class="scanlines"></div>
+    <div class="pause-box">
+      <h2 class="panel-title">PAUSA</h2>
+      <button id="btn-resume" class="btn primary">CONTINUAR</button>
+      <button id="btn-restart" class="btn">REINICIAR MISIÓN</button>
+      <button id="btn-pause-settings" class="btn">CONFIGURACIÓN</button>
+      <button id="btn-pause-menu" class="btn">MENÚ PRINCIPAL</button>
+    </div>
+  </section>
+
+  <!-- ================= END ================= -->
+  <section id="end" class="screen overlay-dark">
+    <div class="scanlines"></div>
+    <div class="end-box">
+      <h2 class="end-title">ECOSISTEMA RESTAURADO</h2>
+      <ul class="end-stats">
+        <li><span>ÁRBOLES PLANTADOS</span><b>10</b></li>
+        <li><span>AGUA RECUPERADA</span><b>100%</b></li>
+        <li><span>INCENDIOS CONTROLADOS</span><b>1</b></li>
+        <li><span>BIODIVERSIDAD</span><b>+75%</b></li>
+        <li><span>SALUD DEL ECOSISTEMA</span><b>100%</b></li>
+      </ul>
+      <h3 class="end-sub">¡MISIÓN COMPLETADA!</h3>
+      <p class="end-tag">"Cada decisión cuenta."</p>
+      <div class="end-buttons">
+        <button id="btn-again" class="btn primary">JUGAR DE NUEVO</button>
+        <button id="btn-end-menu" class="btn">MENÚ PRINCIPAL</button>
+      </div>
+    </div>
+  </section>
+
+</body>
+</html>
