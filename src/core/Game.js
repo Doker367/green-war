@@ -20,6 +20,7 @@ import { MutantCharacter, ViewMode } from '../player/MutantCharacter.js'
 import { InteractionSystem } from '../systems/InteractionSystem.js'
 import { EcosystemSystem } from '../systems/EcosystemSystem.js'
 import { SaveSystem } from '../systems/SaveSystem.js'
+import { PestSystem } from '../systems/PestSystem.js'
 import { MissionManager } from '../missions/MissionManager.js'
 import { HUD } from '../ui/HUD.js'
 import { Menu } from '../ui/Menu.js'
@@ -202,6 +203,13 @@ export class Game {
     }
     window.addEventListener('keydown', (e) => {
       if (map[e.code] !== undefined) { this.input[map[e.code]] = true; if (e.code === 'Space') e.preventDefault() }
+      if (this.state === State.PLAYING && this.pests && !e.repeat) {
+        const pestTests = { Digit1: 'small', Digit2: 'medium', Digit3: 'large' }
+        if (pestTests[e.code]) {
+          const type = this.pests.spawn(pestTests[e.code])
+          this.hud.toast('PRUEBA DE PLAGA', type.label)
+        }
+      }
       if (e.code === 'KeyE') this._onInteractKey()
       if (e.code === 'KeyV') this._toggleView()
       if (e.code === 'Escape') this._onEscape()
@@ -293,6 +301,7 @@ export class Game {
       // Mundo
       this.world = new World(this.scene, this.assets, this.vfx)
       this.player.world = this.world
+      this.pests = new PestSystem(this.scene, this.world, this.settings.quality)
       this.setStep(2); this.setProgress(58); await wait(220)
 
       // Misiones
@@ -446,6 +455,7 @@ export class Game {
 
     this.environment.update(dt)
     if (this.world) this.world.update(dt, this.ecosystem.restoration)
+    if (this.pests) this.pests.update(dt, this.state === State.PLAYING)
     this.vfx.update(dt, this.ecosystem)
 
     this.composer.render()

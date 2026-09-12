@@ -87,6 +87,7 @@ export class ReforestationMission {
 
     // Efecto inmediato (robusto aunque se cierre la terminal)
     const tree = this.ctx.assets.get('tree_alive')
+    tree.userData.isShoot = true
     tree.scale.setScalar(0.02)
     tree.position.set(spot.pos.x, spot.pos.y, spot.pos.z)
     tree.rotation.y = Math.random() * Math.PI * 2
