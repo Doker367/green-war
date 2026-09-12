@@ -23,9 +23,10 @@ import { SaveSystem } from '../systems/SaveSystem.js'
 import { MissionManager } from '../missions/MissionManager.js'
 import { HUD } from '../ui/HUD.js'
 import { Menu } from '../ui/Menu.js'
+import { Cinematic } from '../ui/Cinematic.js'
 import { GreenCodeUI } from '../ui/GreenCodeUI.js'
 
-const State = { LOADING: 'loading', MENU: 'menu', PLAYING: 'playing', PAUSED: 'paused', ENDING: 'ending', END: 'end' }
+const State = { LOADING: 'loading', MENU: 'menu', CINEMATIC: 'cinematic', PLAYING: 'playing', PAUSED: 'paused', ENDING: 'ending', END: 'end' }
 
 export class Game {
   constructor(container) {
@@ -131,8 +132,8 @@ export class Game {
     this.cameraController.onLockChange = (locked) => this._onLockChange(locked)
 
     this.menu = new Menu({
-      onPlay: () => this.startMission(),
-      onStartMission: () => this.startMission(),
+      onPlay: () => this.startCinematic(),
+      onStartMission: () => this.startCinematic(),
       onResume: () => this.resume(),
       onRestart: () => this.restart(),
       onMainMenu: () => this.toMainMenu(),
@@ -142,6 +143,10 @@ export class Game {
 
     this.gc.onSound = (n) => this.audio.sfx(n)
     this.gc.onClose = () => this._onGCClosed()
+
+    this.cinematic = new Cinematic({
+      onFinish: () => this.startMission()
+    })
 
     this.audio.setVolume(this.settings.volume)
 
@@ -333,10 +338,25 @@ export class Game {
     this.fadeEl.classList.toggle('show', to)
   }
 
+  startCinematic() {
+    this.audio.playCinematicTheme()
+    this._fade(true, 500)
+    setTimeout(() => {
+      this.menu.hideAll()
+      this.state = State.CINEMATIC
+      this._fade(false, 600)
+      this.cinematic.start()
+    }, 520)
+  }
+
   startMission() {
+    this.audio.stopCinematicTheme(900)
     this.audio.start()
     this._fade(true, 500)
     setTimeout(() => {
+      if (this.cinematic && this.cinematic.el) {
+        this.cinematic.el.classList.remove('active')
+      }
       this.menu.hideAll()
       this.hud.show()
       this.state = State.PLAYING
@@ -388,6 +408,10 @@ export class Game {
   }
 
   toMainMenu() {
+    this.audio.stopCinematicTheme(300)
+    if (this.cinematic && this.cinematic.el) {
+      this.cinematic._finish()
+    }
     this.state = State.MENU
     this.hud.hide()
     this.cameraController.enabled = false
