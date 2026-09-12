@@ -15,6 +15,7 @@ export class AudioManager {
     this._musicOsc = [];
     this._timer = null;
     this.muted = false;
+    this._cinematicAudio = null;
   }
 
   init() {
@@ -30,6 +31,53 @@ export class AudioManager {
     this.ready = true;
   }
 
+  playCinematicTheme() {
+    if (this._cinematicAudio) {
+      this.stopCinematicTheme(0);
+    }
+    try {
+      const base = import.meta.env.BASE_URL || '/';
+      const cleanBase = base.endsWith('/') ? base : base + '/';
+      this._cinematicAudio = new Audio(`${cleanBase}audio/the_last_of_us.mp3`);
+      this._cinematicAudio.volume = Math.max(0, Math.min(1, this.volume));
+      this._cinematicAudio.currentTime = 0;
+      const p = this._cinematicAudio.play();
+      if (p !== undefined) {
+        p.catch(err => console.warn('Audio cinemática bloqueado hasta interacción:', err));
+      }
+    } catch (e) {
+      console.warn('Error al iniciar audio de cinemática:', e);
+    }
+  }
+
+  stopCinematicTheme(fadeDuration = 800) {
+    if (!this._cinematicAudio) return;
+    const audio = this._cinematicAudio;
+    this._cinematicAudio = null;
+
+    if (fadeDuration <= 0) {
+      audio.pause();
+      audio.currentTime = 0;
+      return;
+    }
+
+    const startVol = audio.volume;
+    const startTime = performance.now();
+
+    const fadeStep = () => {
+      const elapsed = performance.now() - startTime;
+      const progress = Math.min(1, elapsed / fadeDuration);
+      audio.volume = Math.max(0, startVol * (1 - progress));
+      if (progress < 1) {
+        requestAnimationFrame(fadeStep);
+      } else {
+        audio.pause();
+        audio.currentTime = 0;
+      }
+    };
+    requestAnimationFrame(fadeStep);
+  }
+
   resume() {
     if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
   }
@@ -37,6 +85,9 @@ export class AudioManager {
   setVolume(v) {
     this.volume = v;
     if (this.master) this.master.gain.value = v;
+    if (this._cinematicAudio) {
+      this._cinematicAudio.volume = Math.max(0, Math.min(1, v));
+    }
   }
 
   _noiseBuffer(seconds = 2) {
