@@ -74,6 +74,7 @@ export class AssetManager {
   get(name) {
     if (this.models.has(name)) {
       const clone = this.models.get(name).clone(true)
+      if (name.startsWith('tree_')) clone.userData.isTree = true
       clone.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true } })
       return clone
     }
@@ -117,6 +118,7 @@ export class AssetManager {
 
   makeTree(kind = 'alive') {
     const g = new THREE.Group()
+    g.userData.isTree = true
     const trunkMat = kind === 'alive'
       ? this.mat('trunk', 0x5f4225, { roughness: 1 })
       : this.mat('trunkDead', 0x4a3a2a, { roughness: 1 })
@@ -159,7 +161,6 @@ export class AssetManager {
       for (let i = 0; i < 4; i++) g.add(branch(trunkH * rand(0.6, 1.0), rand(0.8, 1.6), 0.05))
       return g
     }
-
     // --- Árbol vivo ---
     const palette = [0x2e8b47, 0x37a154, 0x256e3c, 0x3fae5f, 0x4f9a3f, 0x2f7d4a]
     const leafMat = this.mat('leaf' + Math.floor(rand(0, palette.length)),
@@ -195,6 +196,9 @@ export class AssetManager {
       const crown = this._mesh(this._geos.ico1, leafMat, 0, baseY + 0.9, 0, 1.9, 1.5, 1.9)
       g.add(crown)
     }
+    g.traverse((object) => {
+      if (object.isMesh && object.material === leafMat) object.userData.isLeaf = true
+    })
     return g
   }
 
