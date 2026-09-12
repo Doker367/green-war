@@ -819,12 +819,12 @@ export class World {
     ]
     for (const d of defs) {
       const mat = new THREE.MeshBasicMaterial({
-        color: d.color, transparent: true, opacity: 0.18,
-        blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+        color: d.color, transparent: true, opacity: 0.12,
+        blending: THREE.AdditiveBlending, depthWrite: false
       })
-      const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 82, 12, 1, true), mat)
+      const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, 64, 10, 1, true), mat)
       const y = terrainHeight(d.pos.x, d.pos.z)
-      beam.position.set(d.pos.x, y + 49, d.pos.z)
+      beam.position.set(d.pos.x, y + 40, d.pos.z)
       beam.visible = d.on
       this.scene.add(beam)
       this.beacons[d.name] = beam

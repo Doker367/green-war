@@ -1,6 +1,6 @@
 // =====================================================================
 // GREEN CODE — MutantCharacter
-// Personaje original: mutante humanoide albino, delgado y encorvado.
+// Personaje original: forajido post-apocalíptico, explorador solitario.
 // Rig procedural + materiales PBR + AnimationMixer (clips generados).
 // Sin assets externos: todo es geometría y textura generada en runtime.
 // =====================================================================
@@ -366,6 +366,16 @@ export class MutantCharacter {
     headShell.renderOrder = 1
     head.add(headShell)
     this.headShell = headShell
+
+    // --- ACCESORIOS DE FORAJIDO ---
+    const hatGroup = new THREE.Group()
+    hatGroup.position.set(0, 0.16, -0.01)
+    put(hatGroup, new THREE.CylinderGeometry(0.09, 0.11, 0.12, 16), this.leatherMat, [0, 0.05, 0])
+    put(hatGroup, new THREE.CylinderGeometry(0.24, 0.24, 0.01, 20), this.leatherMat, [0, 0, 0])
+    head.add(hatGroup)
+
+    // Cicatriz
+    put(head, new THREE.BoxGeometry(0.005, 0.06, 0.01), this.mouthMat, [0.065, 0.04, -0.10], [0, 0, -0.3])
   }
 
   _buildArms(uaL, uaR, faL, faR, haL, haR) {
@@ -417,7 +427,8 @@ export class MutantCharacter {
     put(chest, new THREE.BoxGeometry(0.09, 0.08, 0.02), this.coatDarkMat, [0.11, -0.06, -0.14], [0, 0.25, 0])
     // Correa en muslo
     put(thL, new THREE.CylinderGeometry(0.095, 0.095, 0.04, 12), this.strapMat, [0, -0.22, 0])
-    put(thR, new THREE.BoxGeometry(0.075, 0.11, 0.05), this.leatherMat, [0, -0.24, 0.075])
+    // Funda de pistola
+    put(thR, new THREE.BoxGeometry(0.09, 0.22, 0.12), this.leatherMat, [0, -0.24, 0.08], [0, 0.1, -0.1])
   }
 
   // =====================================================================

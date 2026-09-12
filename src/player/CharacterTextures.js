@@ -70,15 +70,15 @@ export function makeSkinTextures(size = 512) {
   const base = canvas(size)
   const ctx = base.getContext('2d')
 
-  ctx.fillStyle = '#ece5e2'
+  ctx.fillStyle = '#c4a078'
   ctx.fillRect(0, 0, size, size)
 
-  // Variaciones orgánicas de tono (frío pálido / cálido enfermizo)
+  // Variaciones orgánicas de tono
   for (let i = 0; i < 90; i++) {
     const x = rnd() * size, y = rnd() * size
     const r = 24 + rnd() * 90
     const warm = rnd() > 0.5
-    const col = warm ? '214,166,158' : '178,184,196'
+    const col = warm ? '158,98,64' : '173,122,86'
     const g = ctx.createRadialGradient(x, y, 0, x, y, r)
     g.addColorStop(0, `rgba(${col},${0.05 + rnd() * 0.05})`)
     g.addColorStop(1, `rgba(${col},0)`)
@@ -90,17 +90,17 @@ export function makeSkinTextures(size = 512) {
   for (let i = 0; i < 42; i++) {
     const x = rnd() * size, y = rnd() * size
     const r = 1.5 + rnd() * 4.5
-    ctx.fillStyle = `rgba(150,116,108,${0.06 + rnd() * 0.09})`
+    ctx.fillStyle = `rgba(102,68,54,${0.06 + rnd() * 0.09})`
     ctx.beginPath(); ctx.ellipse(x, y, r, r * (0.6 + rnd() * 0.8), rnd() * Math.PI, 0, Math.PI * 2); ctx.fill()
   }
 
-  // Venas: ramas sinuosas azuladas muy tenues
+  // Venas: ramas sinuosas sutiles tonos marrones
   ctx.lineCap = 'round'
   for (let i = 0; i < 30; i++) {
     let x = rnd() * size, y = rnd() * size
     let a = rnd() * Math.PI * 2
     const w = 0.6 + rnd() * 1.1
-    ctx.strokeStyle = `rgba(104,104,150,${0.05 + rnd() * 0.08})`
+    ctx.strokeStyle = `rgba(120,80,60,${0.05 + rnd() * 0.08})`
     ctx.lineWidth = w
     ctx.beginPath(); ctx.moveTo(x, y)
     const steps = 5 + Math.floor(rnd() * 6)

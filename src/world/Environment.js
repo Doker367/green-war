@@ -1,12 +1,12 @@
 // =====================================================================
 // GREEN CODE — Environment
-// Cielo, sol, niebla, iluminación y color grading dinámico.
-// Interpola del estado "seco/contaminado" al "restaurado".
+// Ciclo día/noche (amanecer, tarde, atardecer, noche) + restauración.
+// La noche NO queda 100% oscura: hay luz de luna, estrellas y ambiente.
 // =====================================================================
 
 import * as THREE from 'three'
 import { Sky } from 'three/addons/objects/Sky.js'
-import { lerp, damp } from '../core/Utils.js'
+import { lerp, clamp, damp } from '../core/Utils.js'
 
 export class Environment {
   constructor(scene, renderer) {
@@ -17,19 +17,27 @@ export class Environment {
     this.time = 0
     this._t = 0
 
+    // --- Ciclo día/noche ---
+    this.dayTime = 0.30        // 0 = medianoche, 0.25 = amanecer, 0.5 = mediodía, 0.75 = atardecer
+    this.dayLength = 90        // segundos por día completo (corto para la demo)
+    this.dayFactor = 1         // 1 = día, 0 = noche
+    this.paused = false
+
+    this.sunVec = new THREE.Vector3()
+    this.moonVec = new THREE.Vector3()
+
     // --- Cielo ---
     this.sky = new Sky()
     this.sky.scale.setScalar(45000)
     scene.add(this.sky)
     const u = this.sky.material.uniforms
-    u.turbidity.value = 16
-    u.rayleigh.value = 3
-    u.mieCoefficient.value = 0.006
+    u.turbidity.value = 12
+    u.rayleigh.value = 2
+    u.mieCoefficient.value = 0.003
     u.mieDirectionalG.value = 0.8
-    this.sunVec = new THREE.Vector3()
 
     // --- Luces ---
-    this.sun = new THREE.DirectionalLight(0xffcf8a, 2.2)
+    this.sun = new THREE.DirectionalLight(0xfff2d0, 3)
     this.sun.position.set(60, 80, 30)
     this.sun.castShadow = true
     this.sun.shadow.mapSize.set(2048, 2048)
@@ -44,109 +52,143 @@ export class Environment {
     scene.add(this.sun)
     scene.add(this.sun.target)
 
-    this.hemi = new THREE.HemisphereLight(0x9bb8c8, 0x4a3a24, 0.55)
+    this.hemi = new THREE.HemisphereLight(0xbcd4e8, 0x4a3a24, 0.85)
     scene.add(this.hemi)
 
-    this.ambient = new THREE.AmbientLight(0xffffff, 0.18)
+    this.ambient = new THREE.AmbientLight(0xffffff, 0.26)
     scene.add(this.ambient)
 
     // --- Niebla ---
-    this.fogColor = new THREE.Color(0x9a8a6e)
-    scene.fog = new THREE.FogExp2(this.fogColor.getHex(), 0.006)
+    this.fogColor = new THREE.Color(0xc2a878)
+    scene.fog = new THREE.FogExp2(this.fogColor.getHex(), 0.0038)
 
-    // Variables internas para el ciclo de día y noche
-    this.time = 10 // Comenzar de día
-    this._c1 = new THREE.Color()
-    this._c2 = new THREE.Color()
-    this._c3 = new THREE.Color()
-    this._cDry = new THREE.Color()
-    this._cRest = new THREE.Color()
+    // --- Estrellas y luna ---
+    this._buildStars()
+    this._buildMoon()
 
-    this._apply()
+    this._apply(0, this.dayTime)
   }
 
-  setRestoration(t) { this.target = THREE.MathUtils.clamp(t, 0, 1) }
-
-  _apply() {
-    const t = this.restoration
-    const sunAngle = this.time * 0.05 // Velocidad del ciclo de día/noche
-
-    // Posición del sol (gira alrededor del eje X, inclinado un poco en Z)
-    this.sunVec.set(Math.cos(sunAngle), Math.sin(sunAngle), 0.5).normalize()
-    
-    const u = this.sky.material.uniforms
-    u.sunPosition.value.copy(this.sunVec)
-    this.sun.position.copy(this.sunVec).multiplyScalar(160)
-
-    const sunY = this.sunVec.y
-    // Factores de transición suave basados en la altura del sol
-    const dayFactor = THREE.MathUtils.clamp((sunY - 0.1) / 0.3, 0, 1)
-    const nightFactor = THREE.MathUtils.clamp((-sunY - 0.1) / 0.3, 0, 1)
-    const sunsetFactor = 1.0 - dayFactor - nightFactor
-
-    const blendColor = (out, hexDay, hexSunset, hexNight) => {
-      this._c1.setHex(hexDay).multiplyScalar(dayFactor)
-      this._c2.setHex(hexSunset).multiplyScalar(sunsetFactor)
-      this._c3.setHex(hexNight).multiplyScalar(nightFactor)
-      out.copy(this._c1).add(this._c2).add(this._c3)
+  _buildStars() {
+    const n = 900
+    const pos = new Float32Array(n * 3)
+    for (let i = 0; i < n; i++) {
+      const phi = Math.acos(Math.random() * 0.9 + 0.05) // hemisferio superior
+      const theta = Math.random() * Math.PI * 2
+      const r = 900
+      pos[i * 3] = Math.sin(phi) * Math.cos(theta) * r
+      pos[i * 3 + 1] = Math.cos(phi) * r
+      pos[i * 3 + 2] = Math.sin(phi) * Math.sin(theta) * r
     }
+    const geo = new THREE.BufferGeometry()
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
+    this.starMat = new THREE.PointsMaterial({
+      color: 0xffffff, size: 2.2, sizeAttenuation: false,
+      transparent: true, opacity: 0, depthWrite: false, fog: false
+    })
+    this.stars = new THREE.Points(geo, this.starMat)
+    this.stars.frustumCulled = false
+    this.scene.add(this.stars)
+  }
 
-    // Color del Sol
-    blendColor(this._cDry, 0xffd9a0, 0xff7700, 0x1a2530)
-    blendColor(this._cRest, 0xfff4d8, 0xff8c00, 0x223355)
-    this.sun.color.lerpColors(this._cDry, this._cRest, t)
+  _buildMoon() {
+    this.moonMat = new THREE.MeshBasicMaterial({
+      color: 0xe6ecff, fog: false, transparent: true, opacity: 0
+    })
+    this.moon = new THREE.Mesh(new THREE.SphereGeometry(16, 20, 14), this.moonMat)
+    this.moon.frustumCulled = false
+    this.scene.add(this.moon)
+  }
 
-    // Color Hemisphere
-    blendColor(this._cDry, 0xc2b596, 0x8a5a40, 0x101520)
-    blendColor(this._cRest, 0xa9d8ee, 0xffa07a, 0x112233)
-    this.hemi.color.lerpColors(this._cDry, this._cRest, t)
+  setRestoration(t) { this.target = clamp(t, 0, 1) }
 
-    // Color Ground
-    blendColor(this._cDry, 0x5a4a30, 0x402515, 0x0a0c10)
-    blendColor(this._cRest, 0x3a5a30, 0x4a3020, 0x051015)
-    this.hemi.groundColor.lerpColors(this._cDry, this._cRest, t)
+  // Calcula las direcciones del sol y de la luna según la hora
+  _updateOrbits() {
+    const ang = (this.dayTime - 0.25) * Math.PI * 2
+    const sinElev = Math.sin(ang)
+    const elevDeg = sinElev * 70
+    const azim = (this.dayTime * 360 + 90) % 360
 
-    // Color Niebla
-    blendColor(this._cDry, 0xc2a878, 0x8a4020, 0x10151a)
-    blendColor(this._cRest, 0xa9d8e6, 0xff8c60, 0x0a1018)
-    this.fogColor.lerpColors(this._cDry, this._cRest, t)
+    this.sunVec.setFromSphericalCoords(1, THREE.MathUtils.degToRad(90 - elevDeg), THREE.MathUtils.degToRad(azim))
+
+    // Luz direccional: sol de día, luna (opuesta y elevada) de noche
+    const moonAzim = (azim + 180) % 360
+    this.moonVec.setFromSphericalCoords(1, THREE.MathUtils.degToRad(90 - 42), THREE.MathUtils.degToRad(moonAzim))
+
+    const dayFactor = THREE.MathUtils.smoothstep(sinElev, -0.06, 0.30)
+    this.dayFactor = dayFactor
+    this.sinElev = sinElev
+    this.azim = azim
+
+    const lightVec = sinElev > 0.02 ? this.sunVec : this.moonVec
+    this.sun.position.copy(lightVec).multiplyScalar(160)
+    this.sun.target.position.set(0, 0, 0)
+  }
+
+  _apply(restoration = this.restoration, dayTime = this.dayTime) {
+    this._updateOrbits()
+    const d = this.dayFactor
+    const u = this.sky.material.uniforms
+
+    // --- Cielo (día/atardecer/noche), modulado por restauración ---
+    u.turbidity.value = lerp(6, lerp(12, 3, restoration), d)
+    u.rayleigh.value = lerp(0.6, lerp(2.0, 1.1, restoration), d)
+    u.mieCoefficient.value = lerp(0.0008, lerp(0.002, 0.0012, restoration), d)
+    u.mieDirectionalG.value = 0.8
+    u.sunPosition.value.copy(this.sunVec)
+
+    // --- Color e intensidad de la luz principal ---
+    const moonColor = new THREE.Color(0x9fb8e8)
+    const dawnColor = new THREE.Color(0xff9a4d)
+    const dayColor = new THREE.Color(0xfff4d8)
+    const c = new THREE.Color()
+    if (this.sinElev <= 0.02) {
+      c.copy(moonColor)
+    } else {
+      const w = THREE.MathUtils.smoothstep(this.sinElev, 0.02, 0.38)
+      c.copy(dawnColor).lerp(dayColor, w)
+    }
+    this.sun.color.copy(c)
+
+    // Noche nunca 100% oscura: intensidad mínima de luna
+    this.sun.intensity = lerp(0.55, 3.2, d)
+    this.hemi.intensity = lerp(0.55, 1.0, d)
+    this.hemi.color.setHex(lerp(0x24365e, lerp(0xc2b596, 0xa9d8ee, restoration), d))
+    this.hemi.groundColor.setHex(lerp(0x0c1424, lerp(0x5a4a30, 0x3a5a30, restoration), d))
+    this.ambient.intensity = lerp(0.34, 0.28, d)
+    this.ambient.color.setHex(lerp(0x33456b, 0xffffff, d))
+
+    // --- Niebla ---
+    const dayFog = new THREE.Color().setHex(lerp(0xc2a878, 0xa9d8e6, restoration))
+    const nightFog = new THREE.Color(0x12203a)
+    this.fogColor.copy(nightFog).lerp(dayFog, d)
     this.scene.fog.color.copy(this.fogColor)
+    const baseDensity = lerp(0.0038, 0.0014, restoration)
+    this.scene.fog.density = baseDensity * lerp(1.15, 1.0, d)
 
-    // Cielo: de brumoso/seco a limpio/azul
-    u.turbidity.value = lerp(12, 3, t)
-    u.rayleigh.value = lerp(2.0, 1.1, t)
-    u.mieCoefficient.value = lerp(0.002, 0.0012, t)
-    u.mieDirectionalG.value = lerp(0.82, 0.75, t)
+    // --- Exposición: se sube algo de noche para no perder detalle ---
+    this.renderer.toneMappingExposure = lerp(1.2, lerp(0.92, 1.06, restoration), d)
 
-    const getInt = (day, sunset, night) => day * dayFactor + sunset * sunsetFactor + night * nightFactor
-
-    // Apagar el sol al cruzar el horizonte para evitar sombras invertidas
-    const sunVisibility = THREE.MathUtils.clamp(sunY * 10, 0, 1)
-    
-    const sunIntDry = getInt(2.4, 1.5, 0.0) * sunVisibility
-    const sunIntRest = getInt(3.2, 2.0, 0.0) * sunVisibility
-    this.sun.intensity = lerp(sunIntDry, sunIntRest, t)
-
-    const hemiIntDry = getInt(0.78, 0.5, 0.2)
-    const hemiIntRest = getInt(1.02, 0.6, 0.3)
-    this.hemi.intensity = lerp(hemiIntDry, hemiIntRest, t)
-
-    const ambIntDry = getInt(0.24, 0.1, 0.05)
-    const ambIntRest = getInt(0.32, 0.15, 0.08)
-    this.ambient.intensity = lerp(ambIntDry, ambIntRest, t)
-
-    // Densidad de niebla
-    this.scene.fog.density = lerp(0.0038, 0.0014, t)
-
-    // Exposición / grading
-    const expDry = getInt(0.92, 0.85, 0.6)
-    const expRest = getInt(1.06, 0.95, 0.7)
-    this.renderer.toneMappingExposure = lerp(expDry, expRest, t)
+    // --- Estrellas y luna ---
+    const nightAmount = clamp(1 - d * 1.25, 0, 1)
+    this.starMat.opacity = nightAmount * 0.9
+    this.stars.visible = this.starMat.opacity > 0.02
+    this.moonMat.opacity = nightAmount
+    this.moon.visible = nightAmount > 0.05
+    this.moon.position.copy(this.moonVec).multiplyScalar(760)
+    this.moon.lookAt(0, 0, 0)
   }
 
   update(dt) {
-    this.restoration = damp(this.restoration, this.target, 1.2, dt)
     this.time += dt
-    this._apply()
+
+    if (!this.paused) {
+      this.dayTime = (this.dayTime + dt / this.dayLength) % 1
+    }
+
+    this.restoration = damp(this.restoration, this.target, 1.2, dt)
+
+    // Aplicar cada frame (barato): el sol se mueve continuamente
+    this._apply(this.restoration, this.dayTime)
   }
 }
