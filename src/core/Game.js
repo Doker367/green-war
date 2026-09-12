@@ -16,6 +16,7 @@ import { World } from '../world/World.js'
 import { VFXManager } from '../effects/VFXManager.js'
 import { Player } from '../player/Player.js'
 import { CameraController } from '../player/CameraController.js'
+import { MutantCharacter, ViewMode } from '../player/MutantCharacter.js'
 import { InteractionSystem } from '../systems/InteractionSystem.js'
 import { EcosystemSystem } from '../systems/EcosystemSystem.js'
 import { SaveSystem } from '../systems/SaveSystem.js'
@@ -120,6 +121,11 @@ export class Game {
     this.gc = new GreenCodeUI()
     this.interaction = new InteractionSystem()
     this.player = new Player(this.camera, null)
+    this.character = new MutantCharacter()
+    this.character.attach(this.scene)
+    this.player.character = this.character
+    this.viewMode = ViewMode.FIRST
+    this.player.setViewMode(this.viewMode)
     this.cameraController = new CameraController(this.camera, this.renderer.domElement)
     this.cameraController.invertY = this.settings.invertY
     this.cameraController.onLockChange = (locked) => this._onLockChange(locked)
@@ -185,18 +191,25 @@ export class Game {
   //  INPUT
   // =====================================================================
   _initInput() {
-    this.input = { forward: false, back: false, left: false, right: false, run: false, jump: false }
+    this.input = { forward: false, back: false, left: false, right: false, run: false, jump: false, crouch: false }
     const map = {
       KeyW: 'forward', ArrowUp: 'forward',
       KeyS: 'back', ArrowDown: 'back',
       KeyA: 'left', ArrowLeft: 'left',
       KeyD: 'right', ArrowRight: 'right',
-      ShiftLeft: 'run', ShiftRight: 'run', Space: 'jump'
+      ShiftLeft: 'run', ShiftRight: 'run', Space: 'jump',
+      ControlLeft: 'crouch', ControlRight: 'crouch', KeyC: 'crouch'
     }
     window.addEventListener('keydown', (e) => {
       if (map[e.code] !== undefined) { this.input[map[e.code]] = true; if (e.code === 'Space') e.preventDefault() }
       if (e.code === 'KeyE') this._onInteractKey()
+      if (e.code === 'KeyV') this._toggleView()
       if (e.code === 'Escape') this._onEscape()
+      if (this.state === State.PLAYING && !this.gc.isOpen && this.character) {
+        if (e.code === 'KeyF') this.character.playOneShot('attack')
+        if (e.code === 'KeyH') this.character.playOneShot('hit')
+        if (e.code === 'KeyK') this.character.playOneShot('death')
+      }
     })
     window.addEventListener('keyup', (e) => {
       if (map[e.code] !== undefined) this.input[map[e.code]] = false
@@ -218,6 +231,23 @@ export class Game {
   _onEscape() {
     if (this.gc.isOpen) { this.gc.close(); return }
     if (this.state === State.PLAYING) this.pause()
+  }
+
+  _toggleView() {
+    if (this.state !== State.PLAYING && this.state !== State.PAUSED) return
+    if (this.gc.isOpen) return
+    const order = [ViewMode.FIRST, ViewMode.THIRD, ViewMode.FRONT]
+    const i = order.indexOf(this.viewMode)
+    this.viewMode = order[(i + 1) % order.length]
+    this.player.setViewMode(this.viewMode)
+    this.cameraController.bindCamera = this.viewMode === ViewMode.FIRST
+    this.hud.setCrosshairVisible(this.viewMode === ViewMode.FIRST)
+    const labels = {
+      [ViewMode.FIRST]: 'PRIMERA PERSONA',
+      [ViewMode.THIRD]: 'TERCERA PERSONA',
+      [ViewMode.FRONT]: 'CÁMARA FRONTAL'
+    }
+    this.hud.toast('VISTA', labels[this.viewMode])
   }
 
   _onLockChange(locked) {
@@ -315,7 +345,8 @@ export class Game {
       this._fade(false, 700)
       this.cameraController.requestLock()
       this.hud.setMission(this.missionManager.currentName)
-      this.hud.subtitle('Alex llega al refugio. Entra y registra tu zona con GREEN CODE.', 6500)
+      this.hud.setCrosshairVisible(this.viewMode === ViewMode.FIRST)
+      this.hud.subtitle('El Sujeto Cero despierta en el refugio. Registra la zona con GREEN CODE.', 6500)
     }, 520)
   }
 
@@ -396,8 +427,9 @@ export class Game {
 
     if (this.state === State.PLAYING || this.state === State.PAUSED || this.state === State.ENDING || this.state === State.END) {
       if (this.state === State.PLAYING && !this.gc.isOpen) {
-        this.player.update(dt, this.input, this.cameraController.yaw)
+        this.player.update(dt, this.input, this.cameraController.yaw, this.cameraController.pitch)
         this.cameraController.update()
+        this.character.updateLighting(this.camera)
         const near = this.interaction.check(this.player.eyePosition)
         this.hud.setPrompt(near ? near.label : '')
         this.hud.setCrosshairHot(!!near)

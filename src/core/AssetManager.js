@@ -10,7 +10,7 @@
 
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-import { rand, hash2 } from './Utils.js'
+import { rand, hash2, lerp } from './Utils.js'
 
 const MODELS = [
   'house', 'tree_alive', 'tree_dead', 'tree_burnt', 'water_tank',
@@ -118,39 +118,82 @@ export class AssetManager {
   makeTree(kind = 'alive') {
     const g = new THREE.Group()
     const trunkMat = kind === 'alive'
-      ? this.mat('trunk', 0x6b4a2b, { roughness: 1 })
+      ? this.mat('trunk', 0x5f4225, { roughness: 1 })
       : this.mat('trunkDead', 0x4a3a2a, { roughness: 1 })
-    const trunkH = kind === 'alive' ? rand(3.0, 4.2) : rand(2.4, 3.6)
-    g.add(this._mesh(this._geos.cyl, trunkMat, 0, trunkH / 2, 0, 0.28, trunkH, 0.28))
+
+    const trunkH = kind === 'alive' ? rand(3.0, 4.3) : rand(2.4, 3.6)
+    const trunkS = kind === 'alive' ? rand(0.22, 0.32) : rand(0.14, 0.2)
+
+    // Tronco con estrechamiento natural (más grueso en la base)
+    if (kind === 'alive' || kind === 'burnt') {
+      g.add(this._mesh(this._geos.cylTop, trunkMat, 0, trunkH / 2, 0, trunkS, trunkH, trunkS))
+      // raíces
+      for (let i = 0; i < 3; i++) {
+        const a = rand(0, Math.PI * 2)
+        const root = this._mesh(this._geos.cyl, trunkMat, Math.cos(a) * trunkS * 1.4, trunkS * 0.9, Math.sin(a) * trunkS * 1.4, trunkS * 0.6, trunkS * 2.6, trunkS * 0.6)
+        root.rotation.z = Math.cos(a) * 0.9
+        root.rotation.x = -Math.sin(a) * 0.9
+        g.add(root)
+      }
+    } else {
+      g.add(this._mesh(this._geos.cyl, trunkMat, 0, trunkH / 2, 0, 0.2, trunkH, 0.2))
+    }
+
+    // Ramas
+    const branch = (y, len, r) => {
+      const a = rand(0, Math.PI * 2)
+      const b = this._mesh(this._geos.cyl, trunkMat,
+        Math.cos(a) * len * 0.35, y, Math.sin(a) * len * 0.35, r, len, r)
+      b.rotation.z = Math.cos(a) * rand(0.6, 1.1)
+      b.rotation.x = -Math.sin(a) * rand(0.6, 1.1)
+      return b
+    }
 
     if (kind === 'dead') {
-      for (let i = 0; i < 4; i++) {
-        const a = rand(0, Math.PI * 2)
-        const b = this._mesh(this._geos.cyl, trunkMat, Math.cos(a) * 0.5, trunkH + rand(-0.1, 0.4), Math.sin(a) * 0.5, 0.08, rand(1, 1.8), 0.08)
-        b.rotation.z = rand(-1, 1); b.rotation.x = rand(-1, 1)
-        g.add(b)
-      }
+      for (let i = 0; i < 5; i++) g.add(branch(trunkH * rand(0.6, 1.0), rand(1, 1.8), 0.06))
       return g
     }
     if (kind === 'burnt') {
       g.scale.setScalar(rand(0.7, 1.0))
       trunkMat.color.setHex(0x1c1512)
-      for (let i = 0; i < 3; i++) {
-        const a = rand(0, Math.PI * 2)
-        const b = this._mesh(this._geos.cyl, trunkMat, Math.cos(a) * 0.4, trunkH * 0.8, Math.sin(a) * 0.4, 0.07, rand(0.8, 1.6), 0.07)
-        b.rotation.z = rand(-1, 1); b.rotation.x = rand(-1, 1)
-        g.add(b)
-      }
+      for (let i = 0; i < 4; i++) g.add(branch(trunkH * rand(0.6, 1.0), rand(0.8, 1.6), 0.05))
       return g
     }
-    // alive: copa frondosa con tonos variados
-    const greens = [0x2e8b47, 0x37a154, 0x256e3c, 0x3fae5f]
-    const leafMat = this.mat('leaf' + Math.floor(rand(0, greens.length)), greens[Math.floor(rand(0, greens.length))], { roughness: 0.95 })
-    const blobs = 3 + Math.floor(rand(0, 3))
-    for (let i = 0; i < blobs; i++) {
-      const s = rand(0.9, 1.6)
-      g.add(this._mesh(this._geos.ico, leafMat,
-        rand(-0.8, 0.8), trunkH + rand(0.0, 1.4), rand(-0.8, 0.8), s, s * 0.85, s))
+
+    // --- Árbol vivo ---
+    const palette = [0x2e8b47, 0x37a154, 0x256e3c, 0x3fae5f, 0x4f9a3f, 0x2f7d4a]
+    const leafMat = this.mat('leaf' + Math.floor(rand(0, palette.length)),
+      palette[Math.floor(rand(0, palette.length))], { roughness: 0.95, flatShading: true })
+
+    const pine = rand(0, 1) < 0.35
+    if (pine) {
+      // Conífera: capas de conos decrecientes
+      const layers = 4 + Math.floor(rand(0, 3))
+      for (let i = 0; i < layers; i++) {
+        const t = i / layers
+        const r = lerp(1.7, 0.5, t) * rand(0.9, 1.1)
+        const h = rand(1.4, 1.9)
+        const y = trunkH * 0.55 + t * rand(1.6, 2.0)
+        g.add(this._mesh(this._geos.cone, leafMat, 0, y, 0, r, h, r))
+      }
+      g.add(this._mesh(this._geos.cone, leafMat, 0, trunkH * 0.55 + layers * 1.5 + 0.5, 0, 0.5, 1.3, 0.5))
+    } else {
+      // Frondoso: varias capas de copa redondeada
+      for (let i = 0; i < 2; i++) g.add(branch(trunkH * rand(0.7, 0.95), rand(1.2, 1.8), trunkS * 0.35))
+      const blobs = 5 + Math.floor(rand(0, 4))
+      const baseY = trunkH + 0.5
+      for (let i = 0; i < blobs; i++) {
+        const a = (i / blobs) * Math.PI * 2 + rand(0, 1)
+        const rr = i === 0 ? 0 : rand(0.7, 1.6)
+        const s = rand(0.9, 1.7)
+        const blob = this._mesh(this._geos.ico1, leafMat,
+          Math.cos(a) * rr, baseY + rand(-0.2, 1.3) - (i === 0 ? 0 : 0), Math.sin(a) * rr,
+          s, s * rand(0.7, 0.95), s)
+        g.add(blob)
+      }
+      // Copa central dominante
+      const crown = this._mesh(this._geos.ico1, leafMat, 0, baseY + 0.9, 0, 1.9, 1.5, 1.9)
+      g.add(crown)
     }
     return g
   }

@@ -88,6 +88,10 @@ export class HUD {
     this.crosshair.classList.toggle('hot', hot)
   }
 
+  setCrosshairVisible(visible) {
+    if (this.crosshair) this.crosshair.style.display = visible ? '' : 'none'
+  }
+
   toast(main, sub = '') {
     this.toastEl.innerHTML = `<span class="big">${main}</span>${sub}`
     this.toastEl.classList.add('show')

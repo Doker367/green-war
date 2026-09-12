@@ -15,6 +15,10 @@ export class CameraController {
     this.invertY = false
     this.locked = false
     this.enabled = false
+    // Si es true, el controller escribe la rotación de la cámara (1ª persona).
+    // En 3ª persona el Player posiciona y orienta la cámara, y aquí solo
+    // se acumulan yaw/pitch.
+    this.bindCamera = true
     this._euler = new THREE.Euler(0, 0, 0, 'YXZ')
 
     this._onMouseMove = this._onMouseMove.bind(this)
@@ -42,7 +46,7 @@ export class CameraController {
     const dy = e.movementY * this.sensitivity * (this.invertY ? 1 : -1)
     this.pitch += dy
     this.pitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, this.pitch))
-    this.apply()
+    if (this.bindCamera) this.apply()
   }
 
   apply() {
@@ -51,7 +55,7 @@ export class CameraController {
   }
 
   update() {
-    this.apply()
+    if (this.bindCamera) this.apply()
   }
 
   dispose() {

@@ -85,22 +85,40 @@ export class AudioManager {
     fireFilter.type = 'bandpass';
     fireFilter.frequency.value = 900;
     fireFilter.Q.value = 0.7;
+    
+    const firePanner = c.createPanner();
+    firePanner.panningModel = 'HRTF';
+    firePanner.distanceModel = 'inverse';
+    firePanner.refDistance = 1;
+    firePanner.maxDistance = 10000;
+    firePanner.rolloffFactor = 1;
+
     const fireGain = c.createGain();
     fireGain.gain.value = 0;
-    fireSrc.connect(fireFilter).connect(fireGain).connect(this.master);
+    fireSrc.connect(fireFilter).connect(firePanner).connect(fireGain).connect(this.master);
     fireSrc.start();
     this.layers.fire = fireGain;
+    this.layers.firePanner = firePanner;
 
     // --- Agua ---
     const waterSrc = this._noiseSource();
     const waterFilter = c.createBiquadFilter();
     waterFilter.type = 'highpass';
     waterFilter.frequency.value = 1400;
+    
+    const waterPanner = c.createPanner();
+    waterPanner.panningModel = 'HRTF';
+    waterPanner.distanceModel = 'inverse';
+    waterPanner.refDistance = 1;
+    waterPanner.maxDistance = 10000;
+    waterPanner.rolloffFactor = 1;
+
     const waterGain = c.createGain();
     waterGain.gain.value = 0;
-    waterSrc.connect(waterFilter).connect(waterGain).connect(this.master);
+    waterSrc.connect(waterFilter).connect(waterPanner).connect(waterGain).connect(this.master);
     waterSrc.start();
     this.layers.water = waterGain;
+    this.layers.waterPanner = waterPanner;
 
     // --- Aves (chirps programados) ---
     this.layers.birds = c.createGain();
@@ -108,53 +126,108 @@ export class AudioManager {
     this.layers.birds.connect(this.master);
   }
 
+
   _buildMusic() {
     const c = this.ctx;
     const bus = c.createGain();
     bus.gain.value = 0.0;
+    
+    // Filtro suave para los pads
     const filter = c.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.value = 900;
+    filter.frequency.value = 800;
+    
+    // Delay/Eco para la musica
+    const delay = c.createDelay();
+    delay.delayTime.value = 0.75;
+    const delayFeedback = c.createGain();
+    delayFeedback.gain.value = 0.4;
+    delay.connect(delayFeedback).connect(delay);
+    
     bus.connect(filter).connect(this.master);
+    filter.connect(delay).connect(this.master);
+    
     this.layers.music = bus;
     this.layers.musicFilter = filter;
 
-    const chords = {
-      calm: [110, 164.81, 220, 277.18],
-      fire: [98, 146.83, 196, 246.94],
-      restored: [130.81, 196, 261.63, 329.63]
+    this.scales = {
+      calm: [220, 246.94, 277.18, 329.63, 369.99, 440], // A Major Pentatonic
+      fire: [196, 220, 233.08, 261.63, 293.66, 392],    // G Minor
+      restored: [261.63, 293.66, 329.63, 392, 440, 523.25] // C Major Pentatonic
     };
-    for (let i = 0; i < 4; i++) {
+    
+    this.baseChords = {
+      calm: [110, 164.81, 220],
+      fire: [98, 146.83, 196],
+      restored: [130.81, 196, 261.63]
+    };
+    
+    for (let i = 0; i < 3; i++) {
       const osc = c.createOscillator();
-      osc.type = i % 2 === 0 ? 'sine' : 'triangle';
-      osc.frequency.value = chords.calm[i];
+      osc.type = 'sine';
+      osc.frequency.value = this.baseChords.calm[i];
       const g = c.createGain();
-      g.gain.value = 0.14;
-      osc.connect(g).connect(bus);
+      g.gain.value = 0.12;
+      
       const lfo = c.createOscillator();
+      lfo.frequency.value = 0.05 + (i * 0.02);
       const lfoG = c.createGain();
-      lfo.frequency.value = 0.05 + i * 0.017;
-      lfoG.gain.value = 0.05;
+      lfoG.gain.value = 0.06;
       lfo.connect(lfoG).connect(g.gain);
       lfo.start();
+      
+      osc.connect(g).connect(bus);
       osc.start();
-      this._musicOsc.push({ osc, chords });
+      this._musicOsc.push(osc);
     }
 
-    // Secuenciador de arpegios suaves
-    this._timer = setInterval(() => this._tick(), 420);
+    this._step = 0;
+    this._timer = setInterval(() => this._tick(), 600);
   }
 
   _tick() {
     if (!this.ready || this.muted) return;
-    if (this.layers.birds && this.layers.birds.gain.value > 0.02 && Math.random() < 0.5) {
+    this._step++;
+    
+    if (this.layers.birds && this.layers.birds.gain.value > 0.02 && Math.random() < 0.3) {
       this._chirp();
     }
-    if (this.mood === 'restored' && Math.random() < 0.35) {
-      this.note(784 + Math.random() * 400, 0.25, 0.04, 'sine');
+    
+    const scale = this.scales[this.mood] || this.scales.calm;
+    
+    if (Math.random() < 0.6) {
+      const noteIdx = Math.floor(Math.random() * scale.length);
+      let freq = scale[noteIdx];
+      if (Math.random() < 0.3) freq *= 2;
+      
+      const dur = 1.5 + Math.random() * 2.0;
+      const vol = 0.03 + Math.random() * 0.04;
+      const type = Math.random() > 0.5 ? 'sine' : 'triangle';
+      
+      this._playMelodyNote(freq, dur, vol, type);
+    }
+    
+    if (this._step % 8 === 0 && Math.random() < 0.7) {
+      this._playMelodyNote(scale[0] / 2, 4.0, 0.07, 'sine');
     }
   }
 
+  _playMelodyNote(freq, dur, vol, type) {
+    const c = this.ctx;
+    const o = c.createOscillator();
+    const g = c.createGain();
+    o.type = type;
+    o.frequency.value = freq;
+    
+    const now = c.currentTime;
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.linearRampToValueAtTime(vol, now + (dur * 0.2));
+    g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    
+    o.connect(g).connect(this.layers.music);
+    o.start(now);
+    o.stop(now + dur + 0.1);
+  }
   _chirp() {
     const c = this.ctx;
     const o = c.createOscillator();
@@ -187,9 +260,51 @@ export class AudioManager {
     o.start(now); o.stop(now + dur + 0.05);
   }
 
+  playFootstep(surfaceType = 'dirt') {
+    if (!this.ready || this.muted) return;
+    const c = this.ctx;
+    const now = c.currentTime;
+    
+    const bufSize = c.sampleRate * 0.1; // 100ms de ruido
+    const buf = c.createBuffer(1, bufSize, c.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    
+    const src = c.createBufferSource();
+    src.buffer = buf;
+    
+    const filter = c.createBiquadFilter();
+    filter.type = 'bandpass';
+    
+    if (surfaceType === 'grass') {
+      filter.frequency.value = 800;
+      filter.Q.value = 1.0;
+    } else if (surfaceType === 'stone' || surfaceType === 'rock') {
+      filter.frequency.value = 300;
+      filter.Q.value = 2.0;
+    } else { // dirt/default
+      filter.frequency.value = 500;
+      filter.Q.value = 1.5;
+    }
+    
+    const env = c.createGain();
+    env.gain.setValueAtTime(0, now);
+    env.gain.linearRampToValueAtTime(0.15, now + 0.01);
+    env.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+    
+    src.connect(filter).connect(env).connect(this.master);
+    src.start(now);
+    src.stop(now + 0.15);
+  }
+
   sfx(name) {
     if (!this.ready) return;
     switch (name) {
+      case 'footstep':
+        this.playFootstep();
+        break;
       case 'interact':
         this.note(660, 0.12, 0.09, 'square');
         this.note(990, 0.14, 0.05, 'sine');
@@ -234,25 +349,27 @@ export class AudioManager {
     this.layers.birds.gain.setTargetAtTime(0.9 * level01, this.ctx.currentTime, 0.8);
   }
 
+
   setMood(mood) {
     if (!this.ready || this.mood === mood) return;
     this.mood = mood;
-    const chords = {
-      calm: [110, 164.81, 220, 277.18],
-      fire: [98, 146.83, 196, 246.94],
-      restored: [130.81, 196, 261.63, 329.63]
-    }[mood] || [110, 164.81, 220, 277.18];
+    const chords = this.baseChords[mood] || this.baseChords.calm;
     const now = this.ctx.currentTime;
-    this._musicOsc.forEach((m, i) => {
-      m.osc.frequency.setTargetAtTime(chords[i], now, 1.5);
+    
+    this._musicOsc.forEach((osc, i) => {
+      osc.frequency.setTargetAtTime(chords[i], now, 1.5);
     });
-    const target = mood === 'fire' ? 0.16 : mood === 'restored' ? 0.2 : 0.12;
-    this.layers.music.gain.setTargetAtTime(target, now, 1.5);
+    
+    const target = mood === 'fire' ? 0.20 : mood === 'restored' ? 0.25 : 0.18;
+    this.layers.music.gain.setTargetAtTime(target, now, 2.0);
+    
     if (this.layers.musicFilter) {
-      this.layers.musicFilter.frequency.setTargetAtTime(mood === 'restored' ? 1600 : mood === 'fire' ? 500 : 900, now, 1.5);
+      this.layers.musicFilter.frequency.setTargetAtTime(
+        mood === 'restored' ? 1200 : mood === 'fire' ? 400 : 800, 
+        now, 2.0
+      );
     }
   }
-
   start() {
     this.init();
     this.resume();

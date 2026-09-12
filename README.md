@@ -121,6 +121,13 @@ GreenCodeGame/
         └── SaveSystem.js
 ```
 
+## Física y colisiones
+
+- El jugador es sólido contra las **paredes del refugio** y el **búnker**.
+  Se usa detección círculo–AABB en XZ (`World.resolveCollisions`) con rango vertical,
+  de modo que la **puerta del refugio queda libre** y el resto de muros bloquean.
+- Movimiento sobre el terreno con salto, carrera y agacharse.
+
 ## Transformación visual
 
 `Environment`, `World` y `VFXManager` escuchan la **restauración** (0→1) derivada de
@@ -129,7 +136,11 @@ GreenCodeGame/
 - Cielo: turbidez/seguimiento solar → azul limpio.
 - Niebla: marrón densa → azul tenue.
 - Terreno: colores áridos → verdes, por parches orgánicos.
-- **Río: de verde contaminado con lodo a azul limpio** al filtrar el agua.
+- **Río: de verde contaminado con lodo a azul limpio** al filtrar el agua, con rizado
+  animado (mapa de normales generado en canvas) y espuma en las orillas.
+- Montañas de silueta irregular (geometría desplazada por ruido, color por instancia,
+  nieve en las cumbres) y colinas cercanas para dar profundidad.
+- Árboles con tronco estrechado, raíces, ramas y copa por capas (frondosas y coníferas).
 - Vegetación: hierba instanciada y árboles que aparecen por umbrales.
 - Fuego/humo/brasas: bajan con el nivel de incendio.
 - Fauna: aves, mariposas y venados aparecen al restaurar.

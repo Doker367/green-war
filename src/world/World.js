@@ -5,7 +5,7 @@
 // =====================================================================
 
 import * as THREE from 'three'
-import { terrainHeight, rand, makeRandom, RIVER_Z, RIVER_HALF, RIVER_BED, lerp } from '../core/Utils.js'
+import { terrainHeight, rand, makeRandom, RIVER_Z, RIVER_HALF, RIVER_BED, lerp, clamp } from '../core/Utils.js'
 
 export const ZONES = {
   refugio: new THREE.Vector3(0, 0, 22),
@@ -13,6 +13,56 @@ export const ZONES = {
   fire: new THREE.Vector3(82, 0, -14),
   reforest: new THREE.Vector3(-34, 0, 84),
   bunker: new THREE.Vector3(-90, 0, 30)
+}
+
+// Montaña irregular (sin costuras porque el ruido depende de la posición)
+function makeMountainGeo(seed) {
+  const geo = new THREE.ConeGeometry(1, 1, 10, 6)
+  const pos = geo.attributes.position
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i)
+    const r = Math.hypot(x, z)
+    if (r < 1e-4) continue
+    const n =
+      Math.sin(x * 3.1 + seed) * Math.cos(z * 2.7 - seed) * 0.5 +
+      Math.sin((x + z) * 4.3 + seed) * 0.5
+    const ridge = Math.sin(y * 9 + seed) * 0.05
+    const f = 1 + n * 0.22 + ridge
+    pos.setX(i, x * f)
+    pos.setZ(i, z * f)
+    pos.setY(i, y + (Math.sin(x * 5 + seed) * 0.5 + 0.5) * 0.05)
+  }
+  geo.computeVertexNormals()
+  return geo
+}
+
+// Textura de normales para el agua (rizado), generada en canvas
+function makeWaterNormalTexture(size = 128) {
+  const c = document.createElement('canvas')
+  c.width = c.height = size
+  const ctx = c.getContext('2d')
+  const img = ctx.createImageData(size, size)
+  const h = (x, y) =>
+    Math.sin(x * 0.18) * 0.5 + Math.sin(y * 0.22 + x * 0.05) * 0.5 +
+    Math.sin((x + y) * 0.09) * 0.4
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const dx = h(x + 1, y) - h(x - 1, y)
+      const dy = h(x, y + 1) - h(x, y - 1)
+      const nz = 1
+      const len = Math.hypot(-dx, -dy, nz)
+      const i = (y * size + x) * 4
+      img.data[i] = (-dx / len * 0.5 + 0.5) * 255
+      img.data[i + 1] = (-dy / len * 0.5 + 0.5) * 255
+      img.data[i + 2] = (nz / len * 0.5 + 0.5) * 255
+      img.data[i + 3] = 255
+    }
+  }
+  ctx.putImageData(img, 0, 0)
+  const t = new THREE.CanvasTexture(c)
+  t.wrapS = t.wrapT = THREE.RepeatWrapping
+  t.repeat.set(16, 2)
+  return t
 }
 
 export class World {
@@ -25,6 +75,7 @@ export class World {
     this.zones = {}
     this.aliveTrees = []
     this.beacons = {}
+    this.colliders = []
     this._restoration = 0
     this._waterClean = 0
 
@@ -43,6 +94,43 @@ export class World {
   }
 
   getHeight(x, z) { return terrainHeight(x, z) + 0.02 }
+
+  // =====================================================================
+  //  COLISIONES (AABB en XZ, con rango vertical)
+  // =====================================================================
+  addCollider(minX, minZ, maxX, maxZ, minY = -9999, maxY = 9999) {
+    this.colliders.push({ minX, minZ, maxX, maxZ, minY, maxY })
+  }
+
+  // Empuja un círculo (posición, radio) fuera de los colisionadores
+  resolveCollisions(pos, radius) {
+    for (const c of this.colliders) {
+      if (pos.y > c.maxY || pos.y + 1.7 < c.minY) continue
+      const cx = clamp(pos.x, c.minX, c.maxX)
+      const cz = clamp(pos.z, c.minZ, c.maxZ)
+      const dx = pos.x - cx
+      const dz = pos.z - cz
+      const d2 = dx * dx + dz * dz
+      if (d2 >= radius * radius) continue
+      if (d2 > 1e-6) {
+        const d = Math.sqrt(d2)
+        const push = (radius - d) / d
+        pos.x += dx * push
+        pos.z += dz * push
+      } else {
+        // Centro dentro de la caja: salir por la cara más cercana
+        const left = pos.x - c.minX
+        const right = c.maxX - pos.x
+        const back = pos.z - c.minZ
+        const front = c.maxZ - pos.z
+        const m = Math.min(left, right, back, front)
+        if (m === left) pos.x = c.minX - radius
+        else if (m === right) pos.x = c.maxX + radius
+        else if (m === back) pos.z = c.minZ - radius
+        else pos.z = c.maxZ + radius
+      }
+    }
+  }
 
   // =====================================================================
   //  TERRENO
@@ -102,15 +190,30 @@ export class World {
     const geo = new THREE.PlaneGeometry(280, RIVER_HALF * 2, 40, 4)
     geo.rotateX(-Math.PI / 2)
     this.riverMat = new THREE.MeshStandardMaterial({
-      color: 0x3f4a22, roughness: 0.4, metalness: 0.1,
+      color: 0x3f4a22, roughness: 0.5, metalness: 0.1,
       transparent: true, opacity: 0.96,
       emissive: 0x1a2408, emissiveIntensity: 0.6
     })
+    this.waterNormal = makeWaterNormalTexture(128)
+    this.riverMat.normalMap = this.waterNormal
+    this.riverMat.normalScale.set(0.7, 0.7)
     this.river = new THREE.Mesh(geo, this.riverMat)
     this.river.position.set(0, RIVER_BED + 1.25, RIVER_Z)
     this.river.receiveShadow = true
     this.scene.add(this.river)
     this._riverBaseY = RIVER_BED + 1.25
+
+    // Espuma en las orillas
+    this.foamMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff, transparent: true, opacity: 0.1,
+      blending: THREE.AdditiveBlending, depthWrite: false
+    })
+    for (const side of [-1, 1]) {
+      const foam = new THREE.Mesh(new THREE.PlaneGeometry(280, 1.6), this.foamMat)
+      foam.rotation.x = -Math.PI / 2
+      foam.position.set(0, this._riverBaseY + 0.05, RIVER_Z + side * (RIVER_HALF - 1.4))
+      this.scene.add(foam)
+    }
 
     // Manchas de contaminación (desaparecen al filtrar)
     this.sludge = []
@@ -162,7 +265,10 @@ export class World {
     this.riverMat.color.copy(murky).lerp(clean, t)
     this.riverMat.emissive.setHex(0x0a2a3a)
     this.riverMat.emissiveIntensity = lerp(0.6, 0.6, t)
-    this.riverMat.opacity = lerp(0.96, 0.84, t)
+    this.riverMat.opacity = lerp(0.96, 0.86, t)
+    this.riverMat.roughness = lerp(0.5, 0.16, t)
+    this.riverMat.metalness = lerp(0.1, 0.22, t)
+    this.riverMat.normalScale.set(lerp(0.7, 0.35, t), lerp(0.7, 0.35, t))
     if (this.sludge) {
       for (const b of this.sludge) b.material.opacity = 0.75 * (1 - t)
     }
@@ -309,6 +415,14 @@ export class World {
 
     this.scene.add(g)
     this.groups.refugio = g
+    // Colisionadores de las paredes (la puerta queda libre)
+    const top = base + H
+    const t = 0.2
+    this.addCollider(c.x - W / 2 - t, c.z - D / 2, c.x - W / 2 + t, c.z + D / 2, base, top)
+    this.addCollider(c.x + W / 2 - t, c.z - D / 2, c.x + W / 2 + t, c.z + D / 2, base, top)
+    this.addCollider(c.x - W / 2, c.z - D / 2 - t, c.x + W / 2, c.z - D / 2 + t, base, top)
+    this.addCollider(c.x - W / 2, c.z + D / 2 - t, c.x - 1.5, c.z + D / 2 + t, base, top)
+    this.addCollider(c.x + 1.5, c.z + D / 2 - t, c.x + W / 2, c.z + D / 2 + t, base, top)
     this.zones.refugio = {
       pos: c,
       base,
@@ -364,6 +478,7 @@ export class World {
     this.scene.add(g)
     this.groups.bunker = g
     this.zones.bunker = { pos: c, base, hatch }
+    this.addCollider(c.x - 4.6, c.z - 3.6, c.x + 4.6, c.z + 3.6, base, base + 2.9)
   }
 
   // =====================================================================
@@ -616,22 +731,79 @@ export class World {
   }
 
   _buildBoundary() {
-    const geo = new THREE.ConeGeometry(1, 1, 5)
-    const mat = new THREE.MeshStandardMaterial({ color: 0x6b6250, roughness: 1, flatShading: true })
-    const inst = new THREE.InstancedMesh(geo, mat, 26)
+    const geos = [makeMountainGeo(11), makeMountainGeo(29), makeMountainGeo(47)]
+    const N = 30
+    const per = Math.ceil(N / 3)
+    const meshes = geos.map((geo) => {
+      const m = new THREE.InstancedMesh(
+        geo,
+        new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, flatShading: true }),
+        per
+      )
+      m.count = 0
+      return m
+    })
+    const snow = new THREE.InstancedMesh(
+      new THREE.ConeGeometry(1, 1, 9, 2),
+      new THREE.MeshStandardMaterial({ color: 0xeef5f8, roughness: 0.7, flatShading: true }),
+      N
+    )
+    snow.count = 0
     const dummy = new THREE.Object3D()
-    for (let i = 0; i < 26; i++) {
-      const a = (i / 26) * Math.PI * 2
-      const r = 180 + rand(-15, 15)
-      const h = rand(30, 70)
-      dummy.position.set(Math.cos(a) * r, h * 0.35, Math.sin(a) * r)
-      dummy.scale.set(rand(30, 55), h, rand(30, 55))
-      dummy.rotation.y = rand(0, Math.PI)
+    const col = new THREE.Color()
+    const counts = [0, 0, 0]
+    let snowN = 0
+    for (let i = 0; i < N; i++) {
+      const v = i % 3
+      const a = (i / N) * Math.PI * 2 + rand(-0.09, 0.09)
+      const r = 178 + rand(-18, 18)
+      const h = rand(34, 82)
+      const w = rand(26, 54)
+      dummy.position.set(Math.cos(a) * r, h * 0.3, Math.sin(a) * r)
+      dummy.rotation.set(0, rand(0, Math.PI), 0)
+      dummy.scale.set(w, h, w)
       dummy.updateMatrix()
-      inst.setMatrixAt(i, dummy.matrix)
+      meshes[v].setMatrixAt(counts[v], dummy.matrix)
+      const shade = 0.42 + rand(0, 0.22)
+      col.setRGB(shade * 0.95, shade * 0.9, shade * 0.82)
+      meshes[v].setColorAt(counts[v], col)
+      counts[v]++
+      if (h > 58 && snowN < N) {
+        dummy.position.y = h * 0.3 + h * 0.34
+        dummy.scale.set(w * 0.2, h * 0.22, w * 0.2)
+        dummy.rotation.set(0, 0, 0)
+        dummy.updateMatrix()
+        snow.setMatrixAt(snowN++, dummy.matrix)
+      }
     }
-    inst.instanceMatrix.needsUpdate = true
-    this.scene.add(inst)
+    meshes.forEach((m, idx) => {
+      m.count = counts[idx]
+      m.instanceMatrix.needsUpdate = true
+      if (m.instanceColor) m.instanceColor.needsUpdate = true
+      this.scene.add(m)
+    })
+    snow.count = snowN
+    snow.instanceMatrix.needsUpdate = true
+    this.scene.add(snow)
+
+    // Colinas cercanas que dan profundidad
+    const hills = new THREE.InstancedMesh(
+      makeMountainGeo(71),
+      new THREE.MeshStandardMaterial({ color: 0x7a6a4a, roughness: 1, flatShading: true }),
+      14
+    )
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * Math.PI * 2 + rand(-0.2, 0.2)
+      const r = 146 + rand(-12, 12)
+      const h = rand(10, 26)
+      dummy.position.set(Math.cos(a) * r, h * 0.3 - 2, Math.sin(a) * r)
+      dummy.rotation.set(0, rand(0, Math.PI), 0)
+      dummy.scale.set(rand(30, 62), h, rand(30, 62))
+      dummy.updateMatrix()
+      hills.setMatrixAt(i, dummy.matrix)
+    }
+    hills.instanceMatrix.needsUpdate = true
+    this.scene.add(hills)
   }
 
   // =====================================================================
@@ -665,6 +837,17 @@ export class World {
 
   update(dt, restoration) {
     this.setRestoration(restoration)
+
+    // Corriente del río (desplazamiento del rizado y espuma)
+    this._riverTime = (this._riverTime || 0) + dt
+    if (this.waterNormal) {
+      this.waterNormal.offset.x = (this.waterNormal.offset.x + dt * 0.03) % 1
+      this.waterNormal.offset.y = (this.waterNormal.offset.y + dt * 0.006) % 1
+    }
+    if (this.foamMat) {
+      this.foamMat.opacity = 0.07 + Math.sin(this._riverTime * 1.6) * 0.035 + this._waterClean * 0.1
+    }
+
     if (this.aliveTrees) {
       for (const t of this.aliveTrees) {
         t.obj.visible = restoration > t.threshold

@@ -54,55 +54,99 @@ export class Environment {
     this.fogColor = new THREE.Color(0x9a8a6e)
     scene.fog = new THREE.FogExp2(this.fogColor.getHex(), 0.006)
 
-    this._apply(0)
+    // Variables internas para el ciclo de día y noche
+    this.time = 10 // Comenzar de día
+    this._c1 = new THREE.Color()
+    this._c2 = new THREE.Color()
+    this._c3 = new THREE.Color()
+    this._cDry = new THREE.Color()
+    this._cRest = new THREE.Color()
+
+    this._apply()
   }
 
   setRestoration(t) { this.target = THREE.MathUtils.clamp(t, 0, 1) }
 
-  _apply(t) {
+  _apply() {
+    const t = this.restoration
+    const sunAngle = this.time * 0.05 // Velocidad del ciclo de día/noche
+
+    // Posición del sol (gira alrededor del eje X, inclinado un poco en Z)
+    this.sunVec.set(Math.cos(sunAngle), Math.sin(sunAngle), 0.5).normalize()
+    
     const u = this.sky.material.uniforms
+    u.sunPosition.value.copy(this.sunVec)
+    this.sun.position.copy(this.sunVec).multiplyScalar(160)
+
+    const sunY = this.sunVec.y
+    // Factores de transición suave basados en la altura del sol
+    const dayFactor = THREE.MathUtils.clamp((sunY - 0.1) / 0.3, 0, 1)
+    const nightFactor = THREE.MathUtils.clamp((-sunY - 0.1) / 0.3, 0, 1)
+    const sunsetFactor = 1.0 - dayFactor - nightFactor
+
+    const blendColor = (out, hexDay, hexSunset, hexNight) => {
+      this._c1.setHex(hexDay).multiplyScalar(dayFactor)
+      this._c2.setHex(hexSunset).multiplyScalar(sunsetFactor)
+      this._c3.setHex(hexNight).multiplyScalar(nightFactor)
+      out.copy(this._c1).add(this._c2).add(this._c3)
+    }
+
+    // Color del Sol
+    blendColor(this._cDry, 0xffd9a0, 0xff7700, 0x1a2530)
+    blendColor(this._cRest, 0xfff4d8, 0xff8c00, 0x223355)
+    this.sun.color.lerpColors(this._cDry, this._cRest, t)
+
+    // Color Hemisphere
+    blendColor(this._cDry, 0xc2b596, 0x8a5a40, 0x101520)
+    blendColor(this._cRest, 0xa9d8ee, 0xffa07a, 0x112233)
+    this.hemi.color.lerpColors(this._cDry, this._cRest, t)
+
+    // Color Ground
+    blendColor(this._cDry, 0x5a4a30, 0x402515, 0x0a0c10)
+    blendColor(this._cRest, 0x3a5a30, 0x4a3020, 0x051015)
+    this.hemi.groundColor.lerpColors(this._cDry, this._cRest, t)
+
+    // Color Niebla
+    blendColor(this._cDry, 0xc2a878, 0x8a4020, 0x10151a)
+    blendColor(this._cRest, 0xa9d8e6, 0xff8c60, 0x0a1018)
+    this.fogColor.lerpColors(this._cDry, this._cRest, t)
+    this.scene.fog.color.copy(this.fogColor)
+
     // Cielo: de brumoso/seco a limpio/azul
     u.turbidity.value = lerp(12, 3, t)
     u.rayleigh.value = lerp(2.0, 1.1, t)
     u.mieCoefficient.value = lerp(0.002, 0.0012, t)
     u.mieDirectionalG.value = lerp(0.82, 0.75, t)
 
-    // Posición del sol: bajo y cálido -> alto y brillante
-    const elev = lerp(26, 50, t)
-    const azim = 155
-    const phi = THREE.MathUtils.degToRad(90 - elev)
-    const theta = THREE.MathUtils.degToRad(azim)
-    this.sunVec.setFromSphericalCoords(1, phi, theta)
-    u.sunPosition.value.copy(this.sunVec)
-    this.sun.position.copy(this.sunVec).multiplyScalar(160)
+    const getInt = (day, sunset, night) => day * dayFactor + sunset * sunsetFactor + night * nightFactor
 
-    // Luz
-    this.sun.color.setHex(lerp(0xffd9a0, 0xfff4d8, t))
-    this.sun.intensity = lerp(2.4, 3.2, t)
-    this.hemi.intensity = lerp(0.78, 1.02, t)
-    this.hemi.color.setHex(lerp(0xc2b596, 0xa9d8ee, t))
-    this.hemi.groundColor.setHex(lerp(0x5a4a30, 0x3a5a30, t))
-    this.ambient.intensity = lerp(0.24, 0.32, t)
+    // Apagar el sol al cruzar el horizonte para evitar sombras invertidas
+    const sunVisibility = THREE.MathUtils.clamp(sunY * 10, 0, 1)
+    
+    const sunIntDry = getInt(2.4, 1.5, 0.0) * sunVisibility
+    const sunIntRest = getInt(3.2, 2.0, 0.0) * sunVisibility
+    this.sun.intensity = lerp(sunIntDry, sunIntRest, t)
 
-    // Niebla
-    this.fogColor.setHex(lerp(0xc2a878, 0xa9d8e6, t))
-    this.scene.fog.color.copy(this.fogColor)
+    const hemiIntDry = getInt(0.78, 0.5, 0.2)
+    const hemiIntRest = getInt(1.02, 0.6, 0.3)
+    this.hemi.intensity = lerp(hemiIntDry, hemiIntRest, t)
+
+    const ambIntDry = getInt(0.24, 0.1, 0.05)
+    const ambIntRest = getInt(0.32, 0.15, 0.08)
+    this.ambient.intensity = lerp(ambIntDry, ambIntRest, t)
+
+    // Densidad de niebla
     this.scene.fog.density = lerp(0.0038, 0.0014, t)
 
     // Exposición / grading
-    this.renderer.toneMappingExposure = lerp(0.92, 1.06, t)
+    const expDry = getInt(0.92, 0.85, 0.6)
+    const expRest = getInt(1.06, 0.95, 0.7)
+    this.renderer.toneMappingExposure = lerp(expDry, expRest, t)
   }
 
   update(dt) {
     this.restoration = damp(this.restoration, this.target, 1.2, dt)
-    if (Math.abs(this.restoration - this.target) > 0.001) {
-      this._apply(this.restoration)
-      this._dirty = true
-    } else if (this._dirty) {
-      this._apply(this.target)
-      this._dirty = false
-    }
-    // Parpadeo suave del sol
     this.time += dt
+    this._apply()
   }
 }
