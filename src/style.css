@@ -354,3 +354,399 @@ input[type=range] { accent-color: var(--green); width: 200px; }
   .device-body { grid-template-columns: 1fr; }
   .gc-left { border-right: 0; border-bottom: 1px solid rgba(53,224,122,.18); }
 }
+
+/* =====================================================================
+   CINEMÁTICA INTRODUCTORIA NARRATIVA Y ESCÉNICA
+   ===================================================================== */
+#cinematic {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: #050302;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.8s ease, background 1.5s ease;
+}
+
+#cinematic.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Contenedor de arte de fondo */
+.cinematic-bg-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.scene-art {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: scale(1.05);
+  transition: opacity 1.4s cubic-bezier(0.16, 1, 0.3, 1), transform 5s ease-out;
+  pointer-events: none;
+}
+
+.scene-art .art-svg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Activación de cada escena */
+#cinematic.cinematic-ash .scene-art-ash {
+  opacity: 1;
+  transform: scale(1);
+}
+#cinematic.cinematic-fire .scene-art-fire {
+  opacity: 1;
+  transform: scale(1);
+}
+#cinematic.cinematic-ships .scene-art-ships {
+  opacity: 1;
+  transform: scale(1);
+}
+#cinematic.cinematic-dust .scene-art-dust {
+  opacity: 1;
+  transform: scale(1);
+}
+#cinematic.cinematic-hope .scene-art-hope {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Colores de fondo por tema */
+#cinematic.cinematic-ash {
+  background: radial-gradient(circle at 50% 70%, #170904 0%, #0a0402 60%, #030101 100%);
+}
+#cinematic.cinematic-fire {
+  background: radial-gradient(circle at 50% 60%, #290a01 0%, #120300 60%, #050100 100%);
+}
+#cinematic.cinematic-ships {
+  background: radial-gradient(circle at 50% 30%, #0a1424 0%, #030812 50%, #010307 100%);
+}
+#cinematic.cinematic-dust {
+  background: radial-gradient(circle at 50% 60%, #1f1a10 0%, #100d08 60%, #050402 100%);
+}
+#cinematic.cinematic-hope {
+  background: radial-gradient(circle at 50% 60%, #042416 0%, #02120a 50%, #010503 100%);
+}
+#cinematic.cinematic-final-theme {
+  background: radial-gradient(circle at 50% 50%, rgba(10, 48, 28, 0.95), rgba(2, 8, 5, 0.98));
+}
+
+/* --- ANIMACIONES DE ESCENA 1: CENIZAS Y BOSQUE QUEMADO --- */
+.burnt-trees {
+  animation: burntSway 8s ease-in-out infinite alternate;
+  transform-origin: bottom center;
+}
+@keyframes burntSway {
+  0%   { transform: rotate(0deg); }
+  50%  { transform: rotate(0.4deg); }
+  100% { transform: rotate(-0.3deg); }
+}
+
+/* --- ANIMACIONES DE ESCENA 2: LLAMAS Y FUEGO --- */
+.fire-flame {
+  transform-origin: bottom center;
+}
+.flame-1 {
+  animation: flameDance1 2.2s ease-in-out infinite alternate;
+}
+.flame-2 {
+  animation: flameDance2 1.8s ease-in-out infinite alternate;
+}
+.flame-3 {
+  animation: flameDance3 2.6s ease-in-out infinite alternate;
+}
+
+@keyframes flameDance1 {
+  0%   { transform: scaleY(1) skewX(0deg); }
+  50%  { transform: scaleY(1.12) skewX(3deg); }
+  100% { transform: scaleY(0.95) skewX(-2deg); }
+}
+@keyframes flameDance2 {
+  0%   { transform: scaleY(1) skewX(-2deg); }
+  50%  { transform: scaleY(1.18) skewX(2deg); }
+  100% { transform: scaleY(0.92) skewX(-1deg); }
+}
+@keyframes flameDance3 {
+  0%   { transform: scaleY(0.96) skewX(1deg); }
+  50%  { transform: scaleY(1.15) skewX(-3deg); }
+  100% { transform: scaleY(1.02) skewX(2deg); }
+}
+
+/* --- ANIMACIONES DE ESCENA 3: NAVES DE LOS RICOS ESCAPANDO --- */
+.ship-ascend-main {
+  animation: ascendMotherShip 6s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+}
+.ship-ascend-left {
+  animation: ascendEscortLeft 6.5s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+}
+.ship-ascend-right {
+  animation: ascendEscortRight 6.2s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+}
+
+@keyframes ascendMotherShip {
+  0% {
+    transform: translateY(60px) scale(1);
+    opacity: 0.9;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-440px) scale(0.28);
+    opacity: 0.15;
+  }
+}
+
+@keyframes ascendEscortLeft {
+  0% {
+    transform: translate(30px, 80px) scale(1);
+    opacity: 0.8;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-260px, -460px) scale(0.2);
+    opacity: 0.1;
+  }
+}
+
+@keyframes ascendEscortRight {
+  0% {
+    transform: translate(-30px, 90px) scale(1);
+    opacity: 0.8;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(280px, -480px) scale(0.18);
+    opacity: 0.1;
+  }
+}
+
+.ship-thruster-trail {
+  animation: thrusterPulse 0.25s ease-in-out infinite alternate;
+  transform-origin: top center;
+}
+@keyframes thrusterPulse {
+  0%   { opacity: 0.82; transform: scaleY(0.92) scaleX(0.96); }
+  100% { opacity: 1.0;  transform: scaleY(1.1) scaleX(1.04); }
+}
+
+/* --- ANIMACIONES DE ESCENA 5: BROTE GREEN CODE --- */
+.circuit-line {
+  stroke-dasharray: 200;
+  stroke-dashoffset: 200;
+  animation: circuitGrow 3s ease-out forwards 0.4s;
+}
+@keyframes circuitGrow {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.sprout-plant {
+  transform-origin: bottom center;
+  animation: sproutAscend 2.8s cubic-bezier(0.16, 1, 0.3, 1) forwards 0.6s;
+  opacity: 0;
+}
+@keyframes sproutAscend {
+  0% {
+    transform: translate(600px, 440px) scale(0.2);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(600px, 410px) scale(1);
+    opacity: 1;
+  }
+}
+
+.sprout-leaf {
+  transform-origin: center;
+  animation: leafUnfurl 1.8s ease-out forwards 1.8s;
+}
+@keyframes leafUnfurl {
+  0%   { transform: scale(0.2) rotate(15deg); opacity: 0.2; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+/* --- PARTÍCULAS AMBIENTALES DE CINEMÁTICA --- */
+.cinematic-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  overflow: hidden;
+}
+
+.cinematic-particles::before,
+.cinematic-particles::after {
+  content: '';
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  animation: particleFall linear infinite;
+}
+
+.cinematic-particles::before {
+  top: -20px;
+  left: 20%;
+  box-shadow:
+    60px 40px 0 rgba(255,255,255,.2),
+    140px 80px 0 rgba(255,200,100,.18),
+    260px 30px 0 rgba(255,100,50,.22),
+    380px 90px 0 rgba(255,255,255,.15),
+    500px 50px 0 rgba(255,180,80,.2),
+    620px 20px 0 rgba(255,120,40,.25),
+    740px 70px 0 rgba(255,255,255,.18),
+    860px 45px 0 rgba(255,150,50,.22);
+  animation-duration: 9s;
+}
+
+.cinematic-particles::after {
+  top: -20px;
+  left: 50%;
+  box-shadow:
+    30px 60px 0 rgba(255,160,80,.22),
+    110px 25px 0 rgba(255,255,255,.15),
+    200px 85px 0 rgba(255,100,50,.2),
+    320px 40px 0 rgba(255,220,150,.18),
+    440px 75px 0 rgba(255,140,60,.24),
+    560px 15px 0 rgba(255,255,255,.2),
+    680px 65px 0 rgba(255,180,80,.18),
+    790px 35px 0 rgba(255,100,40,.22);
+  animation-duration: 12s;
+  animation-delay: -5s;
+}
+
+#cinematic.cinematic-hope .cinematic-particles::before,
+#cinematic.cinematic-hope .cinematic-particles::after {
+  box-shadow:
+    60px 40px 0 rgba(0,255,136,.3),
+    140px 80px 0 rgba(51,255,170,.25),
+    260px 30px 0 rgba(100,255,200,.3),
+    380px 90px 0 rgba(0,255,136,.25),
+    500px 50px 0 rgba(51,255,170,.3),
+    620px 20px 0 rgba(0,255,136,.35);
+}
+
+@keyframes particleFall {
+  0%   { transform: translateY(0) rotate(0deg); opacity: 0.9; }
+  100% { transform: translateY(115vh) rotate(360deg); opacity: 0.2; }
+}
+
+/* --- CONTENIDO Y TEXTO DE CINEMÁTICA --- */
+.cinematic-content {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 40px;
+}
+
+.cinematic-scene {
+  text-align: center;
+  max-width: 860px;
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+.cinematic-scene.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.cinematic-text {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: clamp(24px, 3.8vw, 42px);
+  font-weight: 600;
+  letter-spacing: 2px;
+  line-height: 1.6;
+  color: #e8f9f1;
+  text-shadow: 0 4px 30px rgba(0,0,0,.9), 0 0 15px rgba(0,0,0,.9);
+  opacity: 0;
+  transition: opacity 0.9s ease 0.2s, transform 0.9s ease 0.2s;
+  transform: scale(0.98);
+}
+
+.cinematic-text.show {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Estilos de color de texto según la escena */
+.cinematic-ash .cinematic-text { color: #f0dfd0; }
+.cinematic-fire .cinematic-text { color: #ffe4d1; text-shadow: 0 4px 30px rgba(0,0,0,1), 0 0 25px rgba(255,85,0,.4); }
+.cinematic-ships .cinematic-text { color: #d8ecff; text-shadow: 0 4px 30px rgba(0,0,0,1), 0 0 25px rgba(0,170,255,.3); }
+.cinematic-dust .cinematic-text { color: #ded6c8; }
+.cinematic-hope .cinematic-text { color: #d1ffe6; text-shadow: 0 4px 30px rgba(0,0,0,1), 0 0 25px rgba(0,255,136,.4); }
+
+/* --- BARRA INFERIOR DE NAVEGACIÓN --- */
+.cinematic-bottom {
+  position: absolute;
+  bottom: 36px;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 48px;
+  z-index: 10;
+}
+
+.cinematic-counter {
+  font-family: 'Orbitron', monospace;
+  font-size: 13px;
+  letter-spacing: 3px;
+  color: var(--green);
+  text-shadow: 0 0 12px rgba(53,224,122,.5);
+}
+
+.cinematic-skip {
+  padding: 8px 24px !important;
+  font-size: 12px !important;
+  letter-spacing: 2px !important;
+}
+
+/* --- ESCENA FINAL CON LOGO --- */
+.cinematic-final {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 15;
+  text-align: center;
+  padding: 30px;
+  background: radial-gradient(circle at 50% 50%, rgba(6, 28, 18, 0.95), rgba(1, 6, 4, 0.98));
+  animation: fadeIn 0.8s ease both;
+}
+
+.cinematic-final.show {
+  display: flex;
+}

@@ -45,6 +45,256 @@
     </div>
   </section>
 
+  <!-- ================= CINEMÁTICA ================= -->
+  <section id="cinematic" class="screen cinematic-ash">
+    <div class="scanlines"></div>
+    <div class="cinematic-bg-container">
+      <!-- Escena 1: Amazonas quemado / Cenizas -->
+      <div class="scene-art scene-art-ash">
+        <svg class="art-svg" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMax slice">
+          <defs>
+            <radialGradient id="ashGlow" cx="50%" cy="85%" r="70%">
+              <stop offset="0%" stop-color="#ff3b00" stop-opacity="0.4"/>
+              <stop offset="45%" stop-color="#4a1500" stop-opacity="0.25"/>
+              <stop offset="100%" stop-color="#050302" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <rect width="1200" height="600" fill="url(#ashGlow)"/>
+          <path d="M0,600 L0,480 Q150,440 300,485 T600,465 T900,495 T1200,455 L1200,600 Z" fill="#0c0705"/>
+          <!-- Árboles quemados amazónicos -->
+          <g class="burnt-trees" fill="#140905">
+            <path d="M120,490 L128,340 L115,310 L128,335 L145,280 L133,338 L140,490 Z"/>
+            <path d="M128,340 L160,320 M115,310 L95,290 M145,280 L170,260" stroke="#140905" stroke-width="4" fill="none"/>
+            <path d="M280,510 L292,300 L275,250 L290,295 L315,220 L300,300 L310,510 Z"/>
+            <path d="M290,295 L335,270 M275,250 L250,230 M315,220 L340,195" stroke="#140905" stroke-width="5" fill="none"/>
+            <path d="M480,500 L560,370 L545,350 L565,368 L600,320 L572,375 L500,500 Z"/>
+            <path d="M780,520 L795,290 L825,210 L802,285 L840,240 L808,310 L815,520 Z"/>
+            <path d="M795,290 L760,260 M825,210 L855,185" stroke="#140905" stroke-width="4" fill="none"/>
+            <path d="M1020,490 L1035,320 L1015,280 L1037,315 L1060,260 L1045,330 L1055,490 Z"/>
+          </g>
+          <!-- Resplandor brumoso de brasas en el suelo -->
+          <ellipse cx="600" cy="570" rx="520" ry="50" fill="#ff4400" opacity="0.25" filter="blur(20px)"/>
+        </svg>
+      </div>
+
+      <!-- Escena 2: Crisis climática y gobiernos colapsados -->
+      <div class="scene-art scene-art-fire">
+        <svg class="art-svg" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMax slice">
+          <defs>
+            <linearGradient id="fireSky" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#1c0500"/>
+              <stop offset="50%" stop-color="#4a1200"/>
+              <stop offset="100%" stop-color="#8c2300"/>
+            </linearGradient>
+          </defs>
+          <rect width="1200" height="600" fill="url(#fireSky)" opacity="0.65"/>
+          <!-- Complejos industriales y cúpula de gobierno en llamas -->
+          <g fill="#100301">
+            <rect x="160" y="370" width="90" height="230"/>
+            <polygon points="150,370 205,290 260,370"/>
+            <rect x="280" y="320" width="150" height="280"/>
+            <rect x="310" y="210" width="22" height="110"/>
+            <rect x="375" y="190" width="26" height="130"/>
+            <!-- Cúpula de capitolio / gobierno -->
+            <path d="M680,600 L680,410 Q800,310 920,410 L920,600 Z"/>
+            <rect x="650" y="430" width="300" height="30"/>
+            <line x1="800" y1="310" x2="800" y2="250" stroke="#100301" stroke-width="6"/>
+          </g>
+          <!-- Llamas animadas por capas -->
+          <path class="fire-flame flame-1" d="M0,600 Q150,420 300,530 T600,430 T900,520 T1200,420 L1200,600 Z" fill="#ff4d00" opacity="0.4"/>
+          <path class="fire-flame flame-2" d="M0,600 Q200,460 400,550 T800,450 T1200,490 L1200,600 Z" fill="#ffaa00" opacity="0.3"/>
+          <path class="fire-flame flame-3" d="M0,600 Q300,490 600,570 T1200,500 L1200,600 Z" fill="#ff1a00" opacity="0.45"/>
+        </svg>
+      </div>
+
+      <!-- Escena 3: LOS RICOS HUYEN DEL PLANETA EN NAVES ESTELARES -->
+      <div class="scene-art scene-art-ships">
+        <svg class="art-svg" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <radialGradient id="earthCurve" cx="50%" cy="130%" r="95%">
+              <stop offset="0%" stop-color="#14100c"/>
+              <stop offset="65%" stop-color="#241708"/>
+              <stop offset="85%" stop-color="#ff6600" stop-opacity="0.6"/>
+              <stop offset="98%" stop-color="#0066cc" stop-opacity="0.3"/>
+              <stop offset="100%" stop-color="#02050a" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="rocketPlasmaBlue" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#ffffff"/>
+              <stop offset="25%" stop-color="#55ccff"/>
+              <stop offset="60%" stop-color="#0055ff"/>
+              <stop offset="100%" stop-color="#001133" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="rocketPlasmaGold" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#ffffff"/>
+              <stop offset="30%" stop-color="#ffbb00"/>
+              <stop offset="70%" stop-color="#ff3300"/>
+              <stop offset="100%" stop-color="#440000" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          
+          <!-- Estrellas en el espacio exterior -->
+          <g class="stars-layer" fill="#ffffff">
+            <circle cx="120" cy="70" r="1.5" opacity="0.9"/>
+            <circle cx="250" cy="130" r="1" opacity="0.7"/>
+            <circle cx="410" cy="50" r="2" opacity="0.8"/>
+            <circle cx="620" cy="90" r="1.5" opacity="0.9"/>
+            <circle cx="790" cy="60" r="1" opacity="0.6"/>
+            <circle cx="950" cy="120" r="2" opacity="0.8"/>
+            <circle cx="1100" cy="80" r="1.5" opacity="0.7"/>
+            <circle cx="80" cy="200" r="1.5" opacity="0.8"/>
+            <circle cx="320" cy="230" r="1" opacity="0.6"/>
+            <circle cx="720" cy="180" r="1.5" opacity="0.7"/>
+            <circle cx="1020" cy="210" r="1" opacity="0.8"/>
+          </g>
+
+          <!-- Horizonte curvado del planeta ardiendo abajo -->
+          <ellipse cx="600" cy="960" rx="920" ry="460" fill="url(#earthCurve)"/>
+          <ellipse cx="600" cy="955" rx="900" ry="445" fill="#080402"/>
+          <!-- Atmósfera de escape -->
+          <path d="M-200,600 Q600,420 1400,600" stroke="#ff7700" stroke-width="4" fill="none" opacity="0.5" filter="blur(3px)"/>
+          <path d="M-200,600 Q600,420 1400,600" stroke="#4db8ff" stroke-width="2" fill="none" opacity="0.5"/>
+
+          <!-- NAVES ESTELARES EN ASCENSO -->
+          <!-- NAVE PRINCIPAL DE LOS RICOS (Crucero orbital masivo) -->
+          <g class="ship-ascend-main">
+            <!-- Chorro de plasma gigante -->
+            <path class="ship-thruster-trail" d="M593,420 L587,680 Q600,720 613,680 L607,420 Z" fill="url(#rocketPlasmaBlue)"/>
+            <!-- Estructura de la nave -->
+            <g transform="translate(600, 380) scale(1.15)">
+              <polygon points="0,-80 16,-22 55,26 38,44 14,34 0,40 -14,34 -38,44 -55,26 -16,-22" fill="#1b222d" stroke="#55b3ff" stroke-width="1.8"/>
+              <!-- Cabina y cubiertas vip iluminadas -->
+              <polygon points="0,-65 9,-26 0,-16 -9,-26" fill="#eaf6ff"/>
+              <line x1="-16" y1="12" x2="-38" y2="27" stroke="#00e5ff" stroke-width="2"/>
+              <line x1="16" y1="12" x2="38" y2="27" stroke="#00e5ff" stroke-width="2"/>
+              <rect x="-9" y="36" width="18" height="5" fill="#00e5ff"/>
+            </g>
+          </g>
+
+          <!-- NAVE 2 (Transporte élite izquierdo) -->
+          <g class="ship-ascend-left">
+            <path class="ship-thruster-trail" d="M343,470 L334,660 Q345,690 356,660 L347,470 Z" fill="url(#rocketPlasmaGold)"/>
+            <g transform="translate(345, 440) scale(0.8) rotate(-7)">
+              <polygon points="0,-65 14,-16 40,22 28,34 9,26 0,30 -9,26 -28,34 -40,22 -14,-16" fill="#281e18" stroke="#ff9933" stroke-width="1.6"/>
+              <polygon points="0,-50 7,-20 0,-12 -7,-20" fill="#fff5ea"/>
+              <rect x="-6" y="27" width="12" height="4" fill="#ffaa00"/>
+            </g>
+          </g>
+
+          <!-- NAVE 3 (Transporte élite derecho) -->
+          <g class="ship-ascend-right">
+            <path class="ship-thruster-trail" d="M853,450 L843,670 Q855,700 867,670 L857,450 Z" fill="url(#rocketPlasmaBlue)"/>
+            <g transform="translate(855, 420) scale(0.75) rotate(7)">
+              <polygon points="0,-65 14,-16 40,22 28,34 9,26 0,30 -9,26 -28,34 -40,22 -14,-16" fill="#1a252f" stroke="#55b3ff" stroke-width="1.6"/>
+              <polygon points="0,-50 7,-20 0,-12 -7,-20" fill="#eaf6ff"/>
+              <rect x="-6" y="27" width="12" height="4" fill="#00d4ff"/>
+            </g>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Escena 4: CIUDAD EN RUINAS Y DESOLACIÓN -->
+      <div class="scene-art scene-art-dust">
+        <svg class="art-svg" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMax slice">
+          <defs>
+            <linearGradient id="toxicSky" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#0a0806"/>
+              <stop offset="60%" stop-color="#211b13"/>
+              <stop offset="100%" stop-color="#423522"/>
+            </linearGradient>
+          </defs>
+          <rect width="1200" height="600" fill="url(#toxicSky)" opacity="0.75"/>
+          <!-- Rascacielos destruidos y vigas retorcidas -->
+          <g fill="#0e0b08" stroke="#1d1610" stroke-width="1">
+            <polygon points="60,600 60,320 90,320 95,290 120,290 135,350 150,350 150,600"/>
+            <rect x="75" y="360" width="8" height="14" fill="#000000"/>
+            <rect x="95" y="360" width="8" height="14" fill="#000000"/>
+            <rect x="75" y="400" width="8" height="14" fill="#000000"/>
+            <rect x="120" y="400" width="8" height="14" fill="#000000"/>
+            <polygon points="220,600 220,210 270,180 340,290 340,600"/>
+            <line x1="270" y1="180" x2="280" y2="140" stroke="#0e0b08" stroke-width="4"/>
+            <polygon points="460,600 480,240 500,240 520,600"/>
+            <line x1="490" y1="240" x2="525" y2="180" stroke="#0e0b08" stroke-width="4"/>
+            <polygon points="620,600 620,260 650,230 710,230 740,600"/>
+            <polygon points="790,600 790,190 860,190 890,260 920,260 920,600"/>
+            <polygon points="980,600 980,310 1060,280 1120,380 1120,600"/>
+          </g>
+          <!-- Montículos de chatarra y suelo desértico -->
+          <path d="M0,600 L0,520 Q200,480 400,530 T800,500 T1200,520 L1200,600 Z" fill="#18130a"/>
+          <!-- Línea de alambrada / ruinas -->
+          <path d="M0,575 L1200,555" stroke="#2c2214" stroke-width="2" stroke-dasharray="10,6"/>
+        </svg>
+      </div>
+
+      <!-- Escena 5: ESPERANZA / EL BROTE DE GREEN CODE -->
+      <div class="scene-art scene-art-hope">
+        <svg class="art-svg" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMax slice">
+          <defs>
+            <radialGradient id="greenDawn" cx="50%" cy="65%" r="65%">
+              <stop offset="0%" stop-color="#00ff88" stop-opacity="0.35"/>
+              <stop offset="45%" stop-color="#00552b" stop-opacity="0.18"/>
+              <stop offset="100%" stop-color="#020a06" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="circuitGrad" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0%" stop-color="#00ff88" stop-opacity="0.1"/>
+              <stop offset="70%" stop-color="#33ffaa" stop-opacity="0.85"/>
+              <stop offset="100%" stop-color="#ffffff"/>
+            </linearGradient>
+          </defs>
+          <!-- Luz esmeralda de esperanza -->
+          <rect width="1200" height="600" fill="url(#greenDawn)"/>
+          
+          <!-- Raíces de circuitos bio-tecnológicos GREEN CODE -->
+          <g class="circuit-roots" stroke="url(#circuitGrad)" stroke-width="2.5" fill="none">
+            <path class="circuit-line" d="M600,580 L600,420 L560,380 L520,380 L490,340"/>
+            <path class="circuit-line" d="M600,470 L640,430 L690,430 L730,370"/>
+            <path class="circuit-line" d="M600,520 L530,480 L460,480 L420,440"/>
+            <path class="circuit-line" d="M600,500 L660,470 L740,470 L780,410"/>
+            <circle cx="490" cy="340" r="4.5" fill="#00ffaa" filter="drop-shadow(0 0 6px #00ffaa)"/>
+            <circle cx="730" cy="370" r="4.5" fill="#00ffaa" filter="drop-shadow(0 0 6px #00ffaa)"/>
+            <circle cx="420" cy="440" r="3.5" fill="#00ffaa" filter="drop-shadow(0 0 6px #00ffaa)"/>
+            <circle cx="780" cy="410" r="3.5" fill="#00ffaa" filter="drop-shadow(0 0 6px #00ffaa)"/>
+          </g>
+
+          <!-- Planta biológica que brota al centro -->
+          <g class="sprout-plant" transform="translate(600, 410)">
+            <path d="M0,170 Q-10,80 0,0" stroke="#22ee77" stroke-width="6" stroke-linecap="round" fill="none" filter="drop-shadow(0 0 8px #00ff88)"/>
+            <path class="sprout-leaf leaf-left" d="M0,20 C-30,-5 -50,15 -60,0 C-40,-35 -10,-10 0,0 Z" fill="#33ff88" filter="drop-shadow(0 0 10px #00ff88)"/>
+            <path class="sprout-leaf leaf-right" d="M0,35 C30,10 55,25 65,10 C45,-25 15,5 0,15 Z" fill="#11dd66" filter="drop-shadow(0 0 10px #00ff88)"/>
+            <circle cx="0" cy="-5" r="7" fill="#ffffff" filter="drop-shadow(0 0 12px #00ffaa)"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Partículas ambientales -->
+    <div class="cinematic-particles"></div>
+
+    <!-- Contenido textual con tipografía y ritmo -->
+    <div class="cinematic-content">
+      <div id="cinematic-scene" class="cinematic-scene">
+        <p id="cinematic-text" class="cinematic-text"></p>
+      </div>
+      <div class="cinematic-bottom">
+        <span id="cinematic-counter" class="cinematic-counter">1 / 5</span>
+        <button id="cinematic-skip" class="btn cinematic-skip cyber-btn">SALTAR ▸▸</button>
+      </div>
+    </div>
+
+    <!-- Escena final con logo y botón continuar -->
+    <div id="cinematic-final" class="cinematic-final">
+      <div class="logo-mark glitch-effect" data-text="◍" style="font-size:48px;margin-bottom:12px;color:var(--green)">◍</div>
+      <h1 class="brand big glitch-effect" data-text="GREENCODE">GREEN<span>CODE</span></h1>
+      <p class="brand-sub big">RESTAURA EL FUTURO</p>
+      <div class="cinematic-final-desc" style="max-width:560px;margin-top:20px;color:#a8c0b5;font-size:18px;line-height:1.6;letter-spacing:1px;font-family:'Rajdhani',sans-serif;text-align:center;">
+        La tecnología del Proyecto GREEN CODE ha sido transferida a tu terminal.<br>
+        Es hora de salvar lo que queda.
+      </div>
+      <button id="cinematic-final-btn" class="btn primary cyber-btn" style="margin-top:36px;font-size:16px;padding:14px 44px;">
+        <span class="btn-deco-l"></span> ENTRAR AL VALLE <span class="btn-deco-r"></span>
+      </button>
+    </div>
+  </section>
+
   <!-- ================= MENU ================= -->
   <section id="menu" class="screen">
     <div class="scanlines"></div>
