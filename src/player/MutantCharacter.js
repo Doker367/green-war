@@ -126,12 +126,12 @@ export class MutantCharacter {
   // =====================================================================
   _buildMaterials() {
     this.skinTex = makeSkinTextures(512)
-    this.coatTex = makeClothTextures({ base: '#23262c', seed: 11, wear: 0.75, stain: '8,8,10' })
-    this.pantsTex = makeClothTextures({ base: '#1a1d21', seed: 29, weave: 2, wear: 0.6, stain: '5,5,6' })
-    this.leatherTex = makeLeatherTextures({ base: '#191817', seed: 7 })
+    this.coatTex = makeClothTextures({ base: '#3d2b1a', seed: 11, wear: 0.75, stain: '8,8,10' })
+    this.pantsTex = makeClothTextures({ base: '#3a3224', seed: 29, weave: 2, wear: 0.6, stain: '5,5,6' })
+    this.leatherTex = makeLeatherTextures({ base: '#2e2218', seed: 7 })
 
     this.skinMat = new THREE.MeshPhysicalMaterial({
-      color: 0xf1e9e5,
+      color: 0xc4956a,
       map: this.skinTex.map,
       normalMap: this.skinTex.normalMap,
       roughnessMap: this.skinTex.roughnessMap,
@@ -141,20 +141,20 @@ export class MutantCharacter {
       clearcoat: 0.16,
       clearcoatRoughness: 0.72,
       sheen: 0.35,
-      sheenColor: new THREE.Color(0xff9c8a),
+      sheenColor: new THREE.Color(0xd9b391),
       sheenRoughness: 0.9
     })
 
-    this.browMat = new THREE.MeshStandardMaterial({ color: 0x7d706c, roughness: 0.85 })
-    this.socketMat = new THREE.MeshStandardMaterial({ color: 0x5f504d, roughness: 0.9 })
+    this.browMat = new THREE.MeshStandardMaterial({ color: 0x4a3525, roughness: 0.85 })
+    this.socketMat = new THREE.MeshStandardMaterial({ color: 0x4a3525, roughness: 0.9 })
     this.mouthMat = new THREE.MeshStandardMaterial({ color: 0x3a1c1e, roughness: 0.75 })
-    this.lidMat = new THREE.MeshStandardMaterial({ color: 0xe6dcd8, roughness: 0.65 })
+    this.lidMat = new THREE.MeshStandardMaterial({ color: 0x9b7050, roughness: 0.65 })
 
     this.eyeMat = new THREE.MeshPhysicalMaterial({
       color: 0xddd5ce, roughness: 0.14, clearcoat: 1, clearcoatRoughness: 0.06
     })
     this.irisMat = new THREE.MeshStandardMaterial({
-      color: 0xa9ccd9, emissive: 0x24424f, emissiveIntensity: 0.5, roughness: 0.25
+      color: 0x7fa849, emissive: 0x2d3f18, emissiveIntensity: 0.2, roughness: 0.25
     })
     this.pupilMat = new THREE.MeshStandardMaterial({ color: 0x04060a, roughness: 0.2 })
 
@@ -164,7 +164,7 @@ export class MutantCharacter {
       roughness: 0.95, metalness: 0.05
     })
     this.coatDarkMat = new THREE.MeshStandardMaterial({
-      map: this.coatTex.map, roughness: 0.92, metalness: 0.05, color: 0x9aa0a8
+      map: this.coatTex.map, roughness: 0.92, metalness: 0.05, color: 0x2a1e12
     })
     this.pantsMat = new THREE.MeshStandardMaterial({
       map: this.pantsTex.map, normalMap: this.pantsTex.normalMap,
@@ -176,12 +176,12 @@ export class MutantCharacter {
       roughnessMap: this.leatherTex.roughnessMap, normalScale: new THREE.Vector2(0.8, 0.8),
       roughness: 0.62, metalness: 0.06
     })
-    this.metalMat = new THREE.MeshStandardMaterial({ color: 0x8b919b, roughness: 0.36, metalness: 1 })
-    this.metalDarkMat = new THREE.MeshStandardMaterial({ color: 0x30353c, roughness: 0.52, metalness: 0.9 })
-    this.strapMat = new THREE.MeshStandardMaterial({ color: 0x14161a, roughness: 0.8, metalness: 0.1 })
+    this.metalMat = new THREE.MeshStandardMaterial({ color: 0x7a5c3a, roughness: 0.36, metalness: 1 })
+    this.metalDarkMat = new THREE.MeshStandardMaterial({ color: 0x4a3a2a, roughness: 0.52, metalness: 0.9 })
+    this.strapMat = new THREE.MeshStandardMaterial({ color: 0x1c1410, roughness: 0.8, metalness: 0.1 })
 
-    this.sssHead = makeSSSMaterial(0xff8f7a, 0.5, 2.2)
-    this.sssEar = makeSSSMaterial(0xff6f5a, 0.9, 1.8)
+    this.sssHead = makeSSSMaterial(0x8c5230, 0.5, 2.2)
+    this.sssEar = makeSSSMaterial(0xa3552a, 0.9, 1.8)
   }
 
   // =====================================================================
@@ -646,9 +646,6 @@ export class MutantCharacter {
     chest.rotation.x += b * 0.02
     chest.scale.set(1 + b * 0.012, 1 + b * 0.016, 1 + b * 0.02)
     this.bones.neck.rotation.x += b * 0.008
-    const look = Math.sin(this._t * 0.32) * 0.11
-    this.bones.head.rotation.y += look
-    this.bones.neck.rotation.y += look * 0.35
   }
 
   _updateFacial(dt) {
@@ -676,9 +673,14 @@ export class MutantCharacter {
     this.rimLight.castShadow = false
     this.rimTarget = new THREE.Object3D()
     this._rimStrength = 1.6
+
+    this.fillLight = new THREE.DirectionalLight(0xffd8c2, 0.0)
+    this.fillLight.castShadow = false
+    this.fillTarget = new THREE.Object3D()
+    this._fillStrength = 0.65
   }
 
-  // Luz de contorno que sigue al personaje desde detrás de la cámara
+  // Luces que siguen al personaje: contorno desde atrás y relleno desde la cámara
   updateLighting(camera) {
     const p = this.root.position
     const dir = camera.position.clone().sub(p)
@@ -687,7 +689,11 @@ export class MutantCharacter {
     dir.normalize()
     this.rimLight.position.set(p.x - dir.x * 6, p.y + 4.2, p.z - dir.z * 6)
     this.rimTarget.position.set(p.x, p.y + 1.4, p.z)
-    this.rimLight.intensity = this.root.visible ? this._rimStrength : 0.0
+    this.fillLight.position.set(p.x + dir.x * 5, p.y + 3.0, p.z + dir.z * 5)
+    this.fillTarget.position.set(p.x, p.y + 1.3, p.z)
+    const on = this.root.visible
+    this.rimLight.intensity = on ? this._rimStrength : 0.0
+    this.fillLight.intensity = on ? this._fillStrength : 0.0
   }
 
   dispose() {

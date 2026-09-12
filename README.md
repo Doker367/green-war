@@ -1,9 +1,32 @@
 # GREEN CODE — "Restaura el Futuro"
 
 Videojuego 3D en primera persona para navegador sobre **impacto social y ambiental**.
-El jugador es **Alex**, un programador ambiental que llega a una comunidad mexicana
-ficticia en colapso y usa la herramienta tecnológica **GREEN CODE** para diagnosticar
-y resolver tres problemas: agua, incendio forestal y deforestación.
+El jugador encarna al **Sujeto Cero**, un mutante humanoide albino de aspecto
+misterioso, que llega a una comunidad mexicana ficticia en colapso y usa la
+herramienta tecnológica **GREEN CODE** para diagnosticar y resolver tres problemas:
+agua, incendio forestal y deforestación. Puedes alternar entre **primera persona,
+tercera persona y cámara frontal** con `V` para ver al personaje.
+
+---
+
+## Personaje: Sujeto Cero
+
+Protagonista original inspirado en la figura de un mutante albino, construido
+100 % por código (sin modelos externos) en [`src/player/MutantCharacter.js`](src/player/MutantCharacter.js):
+
+- **Rig humanoide** articulado (19 huesos) delgado, alto y encorvado, con
+  deformación craneal angulosa, pómulos marcados, nariz estrecha, orejas
+  puntiagudas y ojos grandes con iris claros.
+- **Materiales PBR** (`MeshPhysicalMaterial`/`MeshStandardMaterial`) con texturas
+  procedurales generadas en canvas (piel pálida con venas, poros e imperfecciones;
+  tela desgastada, manchas y arañazos; cuero con grano).
+- **Subsurface scattering aproximado** mediante *shells* aditivos con fresnel para
+  cráneo y orejas, más luz de contorno y relleno que siguen al personaje.
+- **Animaciones** con `AnimationMixer` y clips generados por código: `idle`,
+  `breathe`, `walk`, `run`, `crouch`, `look`, `hit`, `attack` y `death`, además de
+  parpadeo y microexpresiones faciales procedurales.
+- **Vestuario** oscuro y funcional: abrigo desgastado, pantalones tácticos, botas
+  robustas, guantes, correas, bolsas y detalles metálicos.
 
 ---
 
@@ -45,6 +68,9 @@ Al llegar a 100 aparece la pantalla final **ECOSISTEMA RESTAURADO**.
 | Mouse | Mirar (Pointer Lock) |
 | `Shift` | Correr |
 | `Space` | Saltar |
+| `Ctrl` / `C` | Agacharse |
+| `V` | Cambiar vista (1ª / 3ª persona / frontal) |
+| `F` · `H` · `K` | Ataque · Recibir daño · Muerte (demo de animaciones) |
 | `E` | Interactuar / abrir GREEN CODE |
 | `ESC` | Pausa / cerrar terminal |
 
@@ -98,8 +124,10 @@ GreenCodeGame/
     │   ├── AudioManager.js    Audio procedural
     │   └── Utils.js           Matemáticas, ruido y altura del terreno
     ├── player/
-    │   ├── Player.js          Movimiento FPS (andar/correr/saltar)
-    │   └── CameraController.js Pointer Lock y mirada
+    │   ├── Player.js          Movimiento (andar/correr/saltar/agacharse) y vistas 1ª/3ª
+    │   ├── CameraController.js Pointer Lock y mirada
+    │   ├── MutantCharacter.js  Personaje albino: rig, PBR, SSS y AnimationMixer
+    │   └── CharacterTextures.js Texturas procedurales (piel, tela, cuero)
     ├── missions/
     │   ├── MissionManager.js
     │   ├── ShelterMission.js     Refugio, cofres, mapa y búnker
